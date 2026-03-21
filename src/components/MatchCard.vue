@@ -1,9 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { Line } from 'vue-chartjs'
-import {
-  Chart as ChartJS
-} from 'chart.js'
 
 const props = defineProps({
   match: { type: Object, required: true },
@@ -15,7 +12,6 @@ const props = defineProps({
 })
 
 const expanded = ref(false)
-const expandPanel = ref(null)
 
 // Pick a random banner on mount (stable per card instance)
 const bannerUrl = (() => {
@@ -29,7 +25,7 @@ function toggleExpand() {
   expanded.value = !expanded.value
 }
 
-function getSortedPlayers() {
+const sortedPlayers = computed(() => {
   if (!props.match.players) return []
   return [...props.match.players]
     .map(p => ({
@@ -37,6 +33,10 @@ function getSortedPlayers() {
       avg: p.deaths > 0 ? Math.round(p.damage / p.deaths) : p.damage
     }))
     .sort((a, b) => b.avg - a.avg)
+})
+
+function formatStat(value) {
+  return Number(value || 0).toLocaleString('en-US')
 }
 
 // Total samples for tooltip display
@@ -49,19 +49,29 @@ const totalSamples = computed(() => {
 const crosshairPlugin = {
   id: 'crosshair',
   afterDraw(chart) {
-    if (chart.tooltip?._active?.length) {
-      const x = chart.tooltip._active[0].element.x
-      const yAxis = chart.scales.y
-      const ctx = chart.ctx
-      ctx.save()
-      ctx.beginPath()
-      ctx.moveTo(x, yAxis.top)
-      ctx.lineTo(x, yAxis.bottom)
-      ctx.lineWidth = 1
-      ctx.strokeStyle = 'rgba(255,255,255,0.3)'
-      ctx.stroke()
-      ctx.restore()
-    }
+    const active = chart.tooltip?.getActiveElements?.()?.[0] || chart.tooltip?._active?.[0]
+    if (!active) return
+
+    const { x, y } = active.element
+    const yAxis = chart.scales.y
+    const ctx = chart.ctx
+
+    ctx.save()
+    ctx.beginPath()
+    ctx.moveTo(x, yAxis.top)
+    ctx.lineTo(x, yAxis.bottom)
+    ctx.lineWidth = 1
+    ctx.strokeStyle = 'rgba(255,255,255,0.24)'
+    ctx.stroke()
+
+    ctx.beginPath()
+    ctx.arc(x, y, 6, 0, Math.PI * 2)
+    ctx.fillStyle = '#030303'
+    ctx.fill()
+    ctx.lineWidth = 2
+    ctx.strokeStyle = '#00e5ff'
+    ctx.stroke()
+    ctx.restore()
   }
 }
 
@@ -70,8 +80,16 @@ const chartOptions = {
   maintainAspectRatio: false,
   animation: false,
   interaction: {
-    mode: 'index',
+    mode: 'nearest',
+    axis: 'x',
     intersect: false
+  },
+  elements: {
+    point: {
+      radius: 0,
+      hoverRadius: 0,
+      hitRadius: 14
+    }
   },
   plugins: {
     tooltip: {
@@ -107,14 +125,16 @@ const chartOptions = {
         tooltipEl.innerHTML = `
           <div style="font-size:11px;color:#888;text-align:center;margin-bottom:4px;">${sampleNum} / ${totalSamples.value}</div>
           ${iconHtml}
-          <div style="font-size:14px;font-weight:bold;color:${hpColor};text-align:center;">${hp}</div>
+          <div style="font-size:14px;font-weight:bold;color:${hpColor};text-align:center;">${formatStat(hp)}</div>
         `
 
         tooltipEl.style.opacity = '1'
-        const pos = context.chart.canvas.getBoundingClientRect()
         const tooltipWidth = tooltipEl.offsetWidth || 80
-        tooltipEl.style.left = (tooltipModel.caretX - tooltipWidth / 2) + 'px'
-        tooltipEl.style.top = (tooltipModel.caretY - tooltipEl.offsetHeight - 10) + 'px'
+        const maxLeft = context.chart.width - tooltipWidth
+        const left = Math.max(0, Math.min(tooltipModel.caretX - tooltipWidth / 2, maxLeft))
+        const top = Math.max(0, tooltipModel.caretY - tooltipEl.offsetHeight - 10)
+        tooltipEl.style.left = left + 'px'
+        tooltipEl.style.top = top + 'px'
       }
     },
     legend: { display: false }
@@ -201,12 +221,21 @@ const chartPlugins = [crosshairPlugin]
       </div>
 
       <!-- Expanded player list -->
-      <div ref="expandPanel" class="expand-panel" :class="{ open: expanded }">
+      <div class="expand-panel" :class="{ open: expanded }">
         <div class="player-list">
-          <div v-for="p in getSortedPlayers()" :key="p.name" class="player-row">
-            <span class="player-name">{{ p.name }}:</span>
-            <span class="player-avg">{{ p.avg }}</span>
-            <span class="player-detail">{{ p.kills }} kills  {{ p.deaths }} deaths  {{ p.damage }} damage</span>
+          <div class="player-row player-head">
+            <span class="player-name">PLAYER</span>
+            <span class="player-avg">AVG</span>
+            <span class="player-kills">KILLS</span>
+            <span class="player-deaths">DEATHS</span>
+            <span class="player-damage">DAMAGE</span>
+          </div>
+          <div v-for="p in sortedPlayers" :key="p.name" class="player-row">
+            <span class="player-name" :title="p.name">{{ p.name }}</span>
+            <span class="player-avg">{{ formatStat(p.avg) }}</span>
+            <span class="player-kills">{{ formatStat(p.kills) }}</span>
+            <span class="player-deaths">{{ formatStat(p.deaths) }}</span>
+            <span class="player-damage">{{ formatStat(p.damage) }}</span>
           </div>
         </div>
       </div>
@@ -221,9 +250,13 @@ const chartPlugins = [crosshairPlugin]
 
 .card-banner {
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 320px;
   background-size: cover;
   background-position: center right;
+  background-repeat: no-repeat;
   mask-image: linear-gradient(to left, rgba(0,0,0,0.25) 0%, transparent 60%);
   -webkit-mask-image: linear-gradient(to left, rgba(0,0,0,0.25) 0%, transparent 60%);
   pointer-events: none;
@@ -381,18 +414,25 @@ const chartPlugins = [crosshairPlugin]
 .player-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
 .player-row {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  font-size: 14px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.8fr) repeat(4, minmax(54px, 0.8fr));
+  gap: 12px;
+  align-items: center;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  padding: 6px 0;
 }
 
 .player-name {
+  min-width: 0;
   color: rgba(255,255,255,0.7);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .player-avg {
@@ -400,8 +440,46 @@ const chartPlugins = [crosshairPlugin]
   color: #fff;
 }
 
-.player-detail {
+.player-avg,
+.player-kills,
+.player-deaths,
+.player-damage {
+  text-align: right;
+}
+
+.player-kills,
+.player-deaths,
+.player-damage {
+  color: rgba(255,255,255,0.58);
+}
+
+.player-head {
+  padding-top: 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
   color: rgba(255,255,255,0.35);
-  font-size: 13px;
+  font-size: 11px;
+  letter-spacing: 0.8px;
+}
+
+.player-head .player-name,
+.player-head .player-avg,
+.player-head .player-kills,
+.player-head .player-deaths,
+.player-head .player-damage {
+  color: inherit;
+  font-weight: 500;
+}
+
+@media (max-width: 640px) {
+  .player-row {
+    grid-template-columns: minmax(0, 1.4fr) repeat(4, minmax(42px, 0.7fr));
+    gap: 8px;
+    font-size: 12px;
+  }
+
+  .player-head {
+    font-size: 10px;
+  }
 }
 </style>
