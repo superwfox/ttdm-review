@@ -37,3 +37,19 @@ __screenshots__/
 
 # Vite
 *.timestamp-*-*.mjs
+
+# Wrangler
+.wrangler/
+
+# Claude
+.claude/
+
+# Generated files
+seed.sql
+
+font
+
+reference
+
+package-lock.json
+
