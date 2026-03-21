@@ -1,13 +1,10 @@
-// Parse uploader name from filename: "{name}_{time}_{type}.csv"
-// Player name may contain underscores, so we strip from the right
+// Parse uploader name from filename: "{name}_{date}_{time}_{type}.csv"
+// e.g. "SudarkO_2026-03-21_04-07_players.csv" -> "SudarkO"
+// Player name may contain underscores, so match the timestamp pattern from the right
 function parseUploaderName(filename) {
-  // Remove .csv extension
   const base = filename.replace(/\.csv$/i, '')
-  // Split by underscore, remove last two parts (time and type)
-  const parts = base.split('_')
-  if (parts.length < 3) return null
-  // Last part is "players" or "timeline", second to last is time like "12-55"
-  return parts.slice(0, -2).join('_')
+  const match = base.match(/^(.+)_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}_(players|timeline)$/i)
+  return match ? match[1] : null
 }
 
 function parseCSV(text) {
@@ -33,40 +30,23 @@ export async function onRequestPost(context) {
   const db = env.DB
 
   try {
-    const formData = await context.request.formData()
+    const json = await context.request.json()
+    const { players_filename, timeline_filename, players_csv, timeline_csv } = json
 
-    let playersFile = null
-    let timelineFile = null
-    let playersFilename = ''
-    let timelineFilename = ''
-
-    for (const [key, value] of formData.entries()) {
-      if (value instanceof File) {
-        const name = value.name.toLowerCase()
-        if (name.includes('players')) {
-          playersFile = value
-          playersFilename = value.name
-        } else if (name.includes('timeline')) {
-          timelineFile = value
-          timelineFilename = value.name
-        }
-      }
+    if (!players_csv || !timeline_csv) {
+      return Response.json({ ok: false, error: 'Need both players_csv and timeline_csv' }, { status: 400 })
     }
 
-    if (!playersFile || !timelineFile) {
-      return Response.json({ ok: false, error: 'Need both players and timeline CSV files' }, { status: 400 })
-    }
-
-    const uploaderFromPlayers = parseUploaderName(playersFilename)
-    const uploaderFromTimeline = parseUploaderName(timelineFilename)
+    const uploaderFromPlayers = parseUploaderName(players_filename || '')
+    const uploaderFromTimeline = parseUploaderName(timeline_filename || '')
     const uploader = uploaderFromPlayers || uploaderFromTimeline
 
     if (!uploader) {
       return Response.json({ ok: false, error: 'Cannot parse uploader name from filename' }, { status: 400 })
     }
 
-    const playersText = await playersFile.text()
-    const timelineText = await timelineFile.text()
+    const playersText = players_csv
+    const timelineText = timeline_csv
 
     const playersData = parseCSV(playersText)
     const timelineData = parseCSV(timelineText)
