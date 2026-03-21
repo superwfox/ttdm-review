@@ -103,12 +103,19 @@ function getPrimaryTitan(timeline) {
 function getChartData(timeline) {
   if (!timeline || !timeline.length) return null
 
+  function adjustHealth(t) {
+    if (!t.is_doomed && t.titan_type !== 'pilot' && t.titan_type !== 'unknown') {
+      return t.health + 2500
+    }
+    return t.health
+  }
+
   const segments = []
-  let cur = { type: timeline[0].titan_type, points: [{ x: 0, y: timeline[0].health, titanType: timeline[0].titan_type, sampleNum: timeline[0].sample_num }] }
+  let cur = { type: timeline[0].titan_type, points: [{ x: 0, y: adjustHealth(timeline[0]), titanType: timeline[0].titan_type, sampleNum: timeline[0].sample_num }] }
 
   for (let i = 1; i < timeline.length; i++) {
     const t = timeline[i]
-    const point = { x: i, y: t.health, titanType: t.titan_type, sampleNum: t.sample_num }
+    const point = { x: i, y: adjustHealth(t), titanType: t.titan_type, sampleNum: t.sample_num }
     if (t.titan_type !== cur.type) {
       cur.points.push(point)
       segments.push(cur)

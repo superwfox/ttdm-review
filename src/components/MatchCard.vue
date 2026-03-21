@@ -13,6 +13,13 @@ const props = defineProps({
 
 const expanded = ref(false)
 
+function formatTime(utcStr) {
+  if (!utcStr) return ''
+  const d = new Date(utcStr + 'Z')
+  const beijing = new Date(d.getTime() + 8 * 3600000)
+  return beijing.toISOString().slice(0, 16).replace('T', ' ')
+}
+
 // Pick a random banner on mount (stable per card instance)
 const bannerUrl = (() => {
   if (!props.primaryTitan) return null
@@ -169,7 +176,7 @@ const chartPlugins = [crosshairPlugin]
 
     <div class="card-content">
       <div class="card-header">
-        <span class="match-time">{{ match.uploaded_at }}</span>
+        <span class="match-time">{{ formatTime(match.uploaded_at) }}</span>
       </div>
 
       <template v-if="playerStat">

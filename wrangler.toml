@@ -4,5 +4,9 @@ pages_build_output_dir = "dist"
 
 [[d1_databases]]
 binding = "DB"
-database_name = "ttdm-review-db"
-database_id = "2a8eee65-66d0-4601-be10-927083edef1b"
+database_name = "ttdm-review"
+database_id = "9bb3e316-4b90-4b12-b361-99b8e56d5071"
+
+[[kv_namespaces]]
+binding = "RATE_KV"
+id = "9bb3e316-4b90-4b12-b361-99b8e56d5071"
