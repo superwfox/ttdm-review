@@ -5,4 +5,4 @@ pages_build_output_dir = "dist"
 [[d1_databases]]
 binding = "DB"
 database_name = "ttdm-review-db"
-database_id = "placeholder-replace-after-create"
+database_id = "2a8eee65-66d0-4601-be10-927083edef1b"
