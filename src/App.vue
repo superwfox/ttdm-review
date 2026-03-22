@@ -37,8 +37,10 @@ function getTitanColor(type) {
 const searchName = ref('')
 const matches = ref([])
 const loading = ref(false)
+const loadingMore = ref(false)
 const error = ref('')
 const searched = ref(false)
+const hasMore = ref(false)
 
 async function search() {
   const name = searchName.value.trim()
@@ -48,19 +50,43 @@ async function search() {
   error.value = ''
   matches.value = []
   searched.value = true
+  hasMore.value = false
 
   try {
-    const res = await fetch(`/api/query?name=${encodeURIComponent(name)}`)
+    const res = await fetch(`/api/query?name=${encodeURIComponent(name)}&offset=0`)
     const data = await res.json()
     if (!data.ok) {
       error.value = data.error || 'Query failed'
       return
     }
-    matches.value = data.matches.sort((a, b) => new Date(b.uploaded_at) - new Date(a.uploaded_at))
+    matches.value = data.matches
+    hasMore.value = data.has_more
   } catch (e) {
     error.value = e.message
   } finally {
     loading.value = false
+  }
+}
+
+async function loadMore() {
+  const name = searchName.value.trim()
+  if (!name || loadingMore.value) return
+
+  loadingMore.value = true
+
+  try {
+    const res = await fetch(`/api/query?name=${encodeURIComponent(name)}&offset=${matches.value.length}`)
+    const data = await res.json()
+    if (!data.ok) {
+      error.value = data.error || 'Load more failed'
+      return
+    }
+    matches.value.push(...data.matches)
+    hasMore.value = data.has_more
+  } catch (e) {
+    error.value = e.message
+  } finally {
+    loadingMore.value = false
   }
 }
 
@@ -190,6 +216,12 @@ function getChartData(timeline) {
           :titans="TITANS"
         />
       </div>
+
+      <div v-if="hasMore" class="load-more-wrap">
+        <button class="load-more-btn" :disabled="loadingMore" @click="loadMore">
+          {{ loadingMore ? '...' : '加载更多' }}
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -246,5 +278,34 @@ function getChartData(timeline) {
   display: flex;
   flex-direction: column;
   gap: 20px;
+}
+
+/* Load more */
+.load-more-wrap {
+  display: flex;
+  justify-content: center;
+  margin-top: 24px;
+}
+
+.load-more-btn {
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 12px 48px;
+  font-size: 16px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.load-more-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.load-more-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 </style>

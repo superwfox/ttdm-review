@@ -7,3 +7,6 @@ binding = "DB"
 database_name = "ttdm-review"
 database_id = "9bb3e316-4b90-4b12-b361-99b8e56d5071"
 
+[[kv_namespaces]]
+binding = "RATE_KV"
+id = "9d2c0ed628f44f898454cb6767d6fa43"
