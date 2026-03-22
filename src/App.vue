@@ -104,10 +104,11 @@ function getChartData(timeline) {
   if (!timeline || !timeline.length) return null
 
   function adjustHealth(t) {
+    let hp = t.health
     if (!t.is_doomed && t.titan_type !== 'pilot' && t.titan_type !== 'unknown') {
-      return t.health + 2500
+      hp += 2500
     }
-    return t.health
+    return hp > 60000 ? 0 : hp
   }
 
   const segments = []
