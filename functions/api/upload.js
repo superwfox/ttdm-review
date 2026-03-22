@@ -28,8 +28,8 @@ function parseBinaryTimeline(base64Str) {
     samples.push({
       sample_num: b(0) | (b(1) << 8),
       health: b(2) | (b(3) << 8),
-      titan_type: TITAN_TYPES[b(4)] || 'unknown',
-      is_doomed: b(5) === 1
+      titan_type: b(4),
+      is_doomed: b(5) === 1 ? 1 : 0
     })
   }
   return samples
@@ -197,17 +197,22 @@ export async function onRequestPost(context) {
     ).bind(match.id, uploader).first()
 
     if (!existing) {
-      const samples = timelineData.map(t => ({
-        sample_num: t.sample_num,
-        health: t.health,
-        titan_type: t.titan_type,
-        is_doomed: t.is_doomed
-      }))
-      samples.sort((a, b) => a.sample_num - b.sample_num)
+      const insertTimeline = await db.prepare(
+        'INSERT INTO timelines (match_id, uploader_name) VALUES (?, ?)'
+      ).bind(match.id, uploader).run()
+      const timelineId = insertTimeline.meta.last_row_id
 
-      await db.prepare(
-        'INSERT INTO timelines (match_id, uploader_name, samples) VALUES (?, ?, ?)'
-      ).bind(match.id, uploader, JSON.stringify(samples)).run()
+      // Batch insert samples (D1 batch limit is 500 statements)
+      const sampleStmt = db.prepare(
+        'INSERT INTO samples (timeline_id, sample_num, health, titan_type, is_doomed) VALUES (?, ?, ?, ?, ?)'
+      )
+      const sorted = [...timelineData].sort((a, b) => a.sample_num - b.sample_num)
+      for (let i = 0; i < sorted.length; i += 400) {
+        const chunk = sorted.slice(i, i + 400)
+        await db.batch(chunk.map(s =>
+          sampleStmt.bind(timelineId, s.sample_num, s.health, s.titan_type, s.is_doomed)
+        ))
+      }
     }
 
     return Response.json({ ok: true, match_id: match.id, uploader })

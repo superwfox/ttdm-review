@@ -30,6 +30,8 @@ async function hashPlayers(playersText) {
   return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('')
 }
 
+const TITAN_TYPE_MAP = { pilot: 0, legion: 1, ronin: 2, northstar: 3, scorch: 4, tone: 5, monarch: 6, ion: 7, unknown: 8 }
+
 async function main() {
   const refDir = path.join(__dirname, 'reference')
   const files = fs.readdirSync(refDir)
@@ -75,24 +77,32 @@ async function main() {
       )
     }
 
-    // INSERT timeline as compressed JSON
+    // INSERT timeline + samples rows
     if (tFile) {
       console.log(`  Timeline: ${tFile}`)
       const timelineText = fs.readFileSync(path.join(refDir, tFile), 'utf-8')
       const timelineData = parseCSV(timelineText)
 
+      const uploaderEsc = uploader.replace(/'/g, "''")
+      const timelineIdExpr = `(SELECT id FROM timelines WHERE match_id = ${matchIdExpr} AND uploader_name = '${uploaderEsc}')`
+
+      statements.push(
+        `INSERT OR IGNORE INTO timelines (match_id, uploader_name) SELECT ${matchIdExpr}, '${uploaderEsc}' WHERE NOT EXISTS (SELECT 1 FROM timelines WHERE match_id = ${matchIdExpr} AND uploader_name = '${uploaderEsc}');`
+      )
+
       const samples = timelineData.map(t => ({
         sample_num: parseInt(t.SampleNum),
         health: parseInt(t.health),
-        titan_type: (t.titanType || 'unknown')
+        titan_type: TITAN_TYPE_MAP[t.titanType] ?? 8,
+        is_doomed: parseInt(t.isDoomed) || 0
       }))
       samples.sort((a, b) => a.sample_num - b.sample_num)
 
-      const samplesJson = JSON.stringify(samples).replace(/'/g, "''")
-      const uploaderEsc = uploader.replace(/'/g, "''")
-      statements.push(
-        `INSERT OR IGNORE INTO timelines (match_id, uploader_name, samples) SELECT ${matchIdExpr}, '${uploaderEsc}', '${samplesJson}' WHERE NOT EXISTS (SELECT 1 FROM timelines WHERE match_id = ${matchIdExpr} AND uploader_name = '${uploaderEsc}');`
-      )
+      for (const s of samples) {
+        statements.push(
+          `INSERT OR IGNORE INTO samples (timeline_id, sample_num, health, titan_type, is_doomed) SELECT ${timelineIdExpr}, ${s.sample_num}, ${s.health}, ${s.titan_type}, ${s.is_doomed} WHERE NOT EXISTS (SELECT 1 FROM samples WHERE timeline_id = ${timelineIdExpr} AND sample_num = ${s.sample_num});`
+        )
+      }
     } else {
       console.log(`  No timeline file found for ${pFile}`)
     }

@@ -1,3 +1,5 @@
+const TITAN_TYPES = ['pilot','legion','ronin','northstar','scorch','tone','monarch','ion','unknown']
+
 export async function onRequestGet(context) {
   const { env } = context
   const db = env.DB
@@ -31,15 +33,29 @@ export async function onRequestGet(context) {
       ).bind(matchId).all()
 
       // Get timeline for the queried player (if they uploaded one)
-      const timeline = await db.prepare(
-        'SELECT samples FROM timelines WHERE match_id = ? AND uploader_name COLLATE NOCASE = ? COLLATE NOCASE LIMIT 1'
+      const timelineRow = await db.prepare(
+        'SELECT id FROM timelines WHERE match_id = ? AND uploader_name COLLATE NOCASE = ? COLLATE NOCASE LIMIT 1'
       ).bind(matchId, name).first()
+
+      let timeline = []
+      if (timelineRow) {
+        const samplesRows = await db.prepare(
+          'SELECT sample_num, health, titan_type, is_doomed FROM samples WHERE timeline_id = ? ORDER BY sample_num'
+        ).bind(timelineRow.id).all()
+
+        timeline = samplesRows.results.map(s => ({
+          sample_num: s.sample_num,
+          health: s.health,
+          titan_type: TITAN_TYPES[s.titan_type] || 'unknown',
+          is_doomed: s.is_doomed === 1
+        }))
+      }
 
       matches.push({
         id: matchId,
         uploaded_at: match.uploaded_at,
         players: players.results,
-        timeline: timeline ? JSON.parse(timeline.samples) : []
+        timeline
       })
     }
 
