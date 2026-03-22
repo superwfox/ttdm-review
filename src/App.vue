@@ -134,15 +134,18 @@ function getChartData(timeline) {
     if (!t.is_doomed && t.titan_type !== 'pilot' && t.titan_type !== 'unknown') {
       hp += 2500
     }
-    return hp > 60000 ? 0 : hp
+    if (hp > 65000) return { hp: 0, executed: true }
+    return { hp, executed: false }
   }
 
   const segments = []
-  let cur = { type: timeline[0].titan_type, points: [{ x: 0, y: adjustHealth(timeline[0]), titanType: timeline[0].titan_type, sampleNum: timeline[0].sample_num }] }
+  const first = adjustHealth(timeline[0])
+  let cur = { type: timeline[0].titan_type, points: [{ x: 0, y: first.hp, executed: first.executed, titanType: timeline[0].titan_type, sampleNum: timeline[0].sample_num }] }
 
   for (let i = 1; i < timeline.length; i++) {
     const t = timeline[i]
-    const point = { x: i, y: adjustHealth(t), titanType: t.titan_type, sampleNum: t.sample_num }
+    const { hp, executed } = adjustHealth(t)
+    const point = { x: i, y: hp, executed, titanType: t.titan_type, sampleNum: t.sample_num }
     if (t.titan_type !== cur.type) {
       cur.points.push(point)
       segments.push(cur)

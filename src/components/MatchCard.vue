@@ -120,19 +120,24 @@ const chartOptions = {
 
         const raw = dataPoint.raw
         const hp = raw.y
+        const executed = raw.executed
         const titanType = raw.titanType || 'unknown'
         const sampleNum = raw.sampleNum || (raw.x + 1)
         const titanCfg = props.titans[titanType]
-        const hpColor = hp < 1500 ? '#ff9100' : '#fff'
+        const hpColor = executed ? '#ff1744' : hp < 1500 ? '#ff9100' : '#fff'
 
         const iconHtml = titanCfg?.icon
           ? `<img src="${titanCfg.icon}" style="width:32px;height:32px;object-fit:cover;display:block;margin:0 auto 4px;">`
           : ''
 
+        const hpText = executed
+          ? `<div style="font-size:14px;font-weight:bold;color:${hpColor};text-align:center;">处决</div>`
+          : `<div style="font-size:14px;font-weight:bold;color:${hpColor};text-align:center;">${formatStat(hp)}</div>`
+
         tooltipEl.innerHTML = `
           <div style="font-size:11px;color:#888;text-align:center;margin-bottom:4px;">${sampleNum} / ${totalSamples.value}</div>
           ${iconHtml}
-          <div style="font-size:14px;font-weight:bold;color:${hpColor};text-align:center;">${formatStat(hp)}</div>
+          ${hpText}
         `
 
         tooltipEl.style.opacity = '1'

@@ -162,9 +162,7 @@ export async function onRequestPost(context) {
     const uploaderRow = playersData.find(p => p.name.toLowerCase() === uploader.toLowerCase())
     if (uploaderRow) {
       const damage = parseInt(uploaderRow.damage) || 0
-      const deaths = parseInt(uploaderRow.deaths) || 0
-      const avg = deaths > 0 ? Math.round(damage / deaths) : damage
-      if (avg < 1000 || avg > 50000) {
+      if (damage < 15000 || damage > 250000) {
         return Response.json({ ok: true, match_id: -1, uploader, dropped: true })
       }
     }
