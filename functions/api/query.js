@@ -1,6 +1,23 @@
 const TITAN_TYPES = ['pilot','legion','ronin','northstar','scorch','tone','monarch','ion','unknown']
 const PAGE_SIZE = 8
 
+function parseBinaryTimeline(base64Str) {
+  const raw = atob(base64Str)
+  const len = raw.length
+  if (len % 7 !== 0) return []
+  const samples = []
+  for (let i = 0; i < len; i += 7) {
+    const b = idx => raw.charCodeAt(i + idx)
+    samples.push({
+      sample_num: b(0) | (b(1) << 8),
+      health: b(2) | (b(3) << 8),
+      titan_type: TITAN_TYPES[b(4)] || 'unknown',
+      is_doomed: b(5) === 1
+    })
+  }
+  return samples
+}
+
 export async function onRequestGet(context) {
   const { env } = context
   const db = env.DB
@@ -42,21 +59,12 @@ export async function onRequestGet(context) {
 
       // Get timeline for the queried player (if they uploaded one)
       const timelineRow = await db.prepare(
-        'SELECT id FROM timelines WHERE match_id = ? AND uploader_name COLLATE NOCASE = ? COLLATE NOCASE LIMIT 1'
+        'SELECT sample_detail FROM timelines WHERE match_id = ? AND uploader_name COLLATE NOCASE = ? COLLATE NOCASE LIMIT 1'
       ).bind(matchId, name).first()
 
       let timeline = []
-      if (timelineRow) {
-        const samplesRows = await db.prepare(
-          'SELECT sample_num, health, titan_type, is_doomed FROM samples WHERE timeline_id = ? ORDER BY sample_num'
-        ).bind(timelineRow.id).all()
-
-        timeline = samplesRows.results.map(s => ({
-          sample_num: s.sample_num,
-          health: s.health,
-          titan_type: TITAN_TYPES[s.titan_type] || 'unknown',
-          is_doomed: s.is_doomed === 1
-        }))
+      if (timelineRow && timelineRow.sample_detail) {
+        timeline = parseBinaryTimeline(timelineRow.sample_detail)
       }
 
       matches.push({

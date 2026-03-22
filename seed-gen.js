@@ -77,18 +77,13 @@ async function main() {
       )
     }
 
-    // INSERT timeline + samples rows
+    // INSERT timeline with packed sample_detail
     if (tFile) {
       console.log(`  Timeline: ${tFile}`)
       const timelineText = fs.readFileSync(path.join(refDir, tFile), 'utf-8')
       const timelineData = parseCSV(timelineText)
 
       const uploaderEsc = uploader.replace(/'/g, "''")
-      const timelineIdExpr = `(SELECT id FROM timelines WHERE match_id = ${matchIdExpr} AND uploader_name = '${uploaderEsc}')`
-
-      statements.push(
-        `INSERT OR IGNORE INTO timelines (match_id, uploader_name) SELECT ${matchIdExpr}, '${uploaderEsc}' WHERE NOT EXISTS (SELECT 1 FROM timelines WHERE match_id = ${matchIdExpr} AND uploader_name = '${uploaderEsc}');`
-      )
 
       const samples = timelineData.map(t => ({
         sample_num: parseInt(t.SampleNum),
@@ -98,11 +93,23 @@ async function main() {
       }))
       samples.sort((a, b) => a.sample_num - b.sample_num)
 
-      for (const s of samples) {
-        statements.push(
-          `INSERT OR IGNORE INTO samples (timeline_id, sample_num, health, titan_type, is_doomed) SELECT ${timelineIdExpr}, ${s.sample_num}, ${s.health}, ${s.titan_type}, ${s.is_doomed} WHERE NOT EXISTS (SELECT 1 FROM samples WHERE timeline_id = ${timelineIdExpr} AND sample_num = ${s.sample_num});`
-        )
-      }
+      // Pack samples into binary format (7 bytes each) and base64 encode
+      const buf = Buffer.alloc(samples.length * 7)
+      samples.forEach((s, i) => {
+        const off = i * 7
+        buf[off]     = s.sample_num & 0xFF
+        buf[off + 1] = (s.sample_num >> 8) & 0xFF
+        buf[off + 2] = s.health & 0xFF
+        buf[off + 3] = (s.health >> 8) & 0xFF
+        buf[off + 4] = s.titan_type & 0xFF
+        buf[off + 5] = s.is_doomed ? 1 : 0
+        buf[off + 6] = 0 // reserved byte
+      })
+      const sampleDetailBase64 = buf.toString('base64')
+
+      statements.push(
+        `INSERT OR IGNORE INTO timelines (match_id, uploader_name, sample_detail) SELECT ${matchIdExpr}, '${uploaderEsc}', '${sampleDetailBase64}' WHERE NOT EXISTS (SELECT 1 FROM timelines WHERE match_id = ${matchIdExpr} AND uploader_name = '${uploaderEsc}');`
+      )
     } else {
       console.log(`  No timeline file found for ${pFile}`)
     }

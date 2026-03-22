@@ -16,8 +16,6 @@ function parseCSV(text) {
   })
 }
 
-const TITAN_TYPES = ['pilot','legion','ronin','northstar','scorch','tone','monarch','ion','unknown']
-
 function parseBinaryTimeline(base64Str) {
   const raw = atob(base64Str)
   const len = raw.length
@@ -195,22 +193,9 @@ export async function onRequestPost(context) {
     ).bind(match.id, uploader).first()
 
     if (!existing) {
-      const insertTimeline = await db.prepare(
-        'INSERT INTO timelines (match_id, uploader_name) VALUES (?, ?)'
-      ).bind(match.id, uploader).run()
-      const timelineId = insertTimeline.meta.last_row_id
-
-      // Batch insert samples (D1 batch limit is 500 statements)
-      const sampleStmt = db.prepare(
-        'INSERT INTO samples (timeline_id, sample_num, health, titan_type, is_doomed) VALUES (?, ?, ?, ?, ?)'
-      )
-      const sorted = [...timelineData].sort((a, b) => a.sample_num - b.sample_num)
-      for (let i = 0; i < sorted.length; i += 400) {
-        const chunk = sorted.slice(i, i + 400)
-        await db.batch(chunk.map(s =>
-          sampleStmt.bind(timelineId, s.sample_num, s.health, s.titan_type, s.is_doomed)
-        ))
-      }
+      await db.prepare(
+        'INSERT INTO timelines (match_id, uploader_name, sample_detail) VALUES (?, ?, ?)'
+      ).bind(match.id, uploader, timeline_bin).run()
     }
 
     return Response.json({ ok: true, match_id: match.id, uploader })
