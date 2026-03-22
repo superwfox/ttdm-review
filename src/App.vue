@@ -56,7 +56,7 @@ async function search() {
       error.value = data.error || 'Query failed'
       return
     }
-    matches.value = data.matches
+    matches.value = data.matches.sort((a, b) => new Date(b.uploaded_at) - new Date(a.uploaded_at))
   } catch (e) {
     error.value = e.message
   } finally {
