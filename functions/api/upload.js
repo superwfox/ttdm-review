@@ -1,6 +1,7 @@
 function parseUploaderName(filename) {
   const base = filename.replace(/\.(csv|bin)$/i, '')
-  const match = base.match(/^(.+)_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}_(players|timeline)$/i)
+  // Match both HH-MM and HH-MM-SS timestamp formats
+  const match = base.match(/^(.+)_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}(?:-\d{2})?_(players|timeline)$/i)
   return match ? match[1] : null
 }
 
@@ -95,7 +96,7 @@ async function checkIpRate(kv, ip) {
   hits.push(now)
 
   if (hits.length > 3) {
-    await kv.put(banKey, '1', { expirationTtl: 600 })
+    await kv.put(banKey, '1', { expirationTtl: 86400 })
     return false
   }
 
@@ -126,7 +127,7 @@ export async function onRequestPost(context) {
     }
 
     const now = Math.floor(Date.now() / 1000)
-    if (Math.abs(now - ts) > 300) {
+    if (Math.abs(now - ts) > 30) {
       return Response.json({ ok: false, error: 'Request expired' }, { status: 403 })
     }
 
