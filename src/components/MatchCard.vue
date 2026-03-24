@@ -165,7 +165,7 @@ const chartOptions = {
     y1: {
       display: false,
       min: 0,
-      max: 4000,
+      max: props.chartData?.y1Max || 4000,
       position: 'right'
     }
   }
