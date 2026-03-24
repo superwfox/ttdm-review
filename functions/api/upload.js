@@ -209,6 +209,16 @@ export async function onRequestPost(context) {
       ).bind(match.id, uploader, timeline_bin).run()
     }
 
+    // Record IP -> playerName mapping for nickname system
+    const existingNick = await db.prepare(
+      'SELECT id FROM nicknames WHERE ip = ? LIMIT 1'
+    ).bind(ip).first()
+    if (!existingNick) {
+      await db.prepare(
+        'INSERT INTO nicknames (player_name, ip) VALUES (?, ?)'
+      ).bind(uploader, ip).run()
+    }
+
     return Response.json({ ok: true, match_id: match.id, uploader })
   } catch (e) {
     return Response.json({ ok: false, error: e.message }, { status: 500 })

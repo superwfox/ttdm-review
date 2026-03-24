@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import {
   Chart as ChartJS,
   LineElement,
@@ -12,6 +12,7 @@ import {
 import ScanlineBackground from './components/ScanlineBackground.vue'
 import SearchBar from './components/SearchBar.vue'
 import MatchCard from './components/MatchCard.vue'
+import NicknameModal from './components/NicknameModal.vue'
 
 ChartJS.register(LineElement, PointElement, LinearScale, CategoryScale, Filler, Tooltip)
 
@@ -42,6 +43,37 @@ const error = ref('')
 const searched = ref(false)
 const hasMore = ref(false)
 
+// Nickname system
+const showNicknameModal = ref(false)
+const nicknamePlayerName = ref('')
+const currentNickname = ref('')
+const hasNicknameRecord = ref(false)
+
+onMounted(async () => {
+  try {
+    const res = await fetch('/api/nickname')
+    const data = await res.json()
+    if (data.ok && data.has_record) {
+      nicknamePlayerName.value = data.player_name
+      hasNicknameRecord.value = true
+      if (!data.has_nickname) {
+        showNicknameModal.value = true
+      } else {
+        currentNickname.value = data.nickname
+      }
+    }
+  } catch {}
+})
+
+function onNicknameSaved(nick) {
+  currentNickname.value = nick
+  showNicknameModal.value = false
+}
+
+function openNicknameModal() {
+  showNicknameModal.value = true
+}
+
 async function search() {
   const name = searchName.value.trim()
   if (!name) return
@@ -61,6 +93,10 @@ async function search() {
     }
     matches.value = data.matches
     hasMore.value = data.has_more
+    // Handle nickname redirect
+    if (data.redirected_from && data.actual_name) {
+      searchName.value = data.actual_name
+    }
   } catch (e) {
     error.value = e.message
   } finally {
@@ -90,11 +126,34 @@ async function loadMore() {
   }
 }
 
+function adjustHealth(t) {
+  let hp = t.health
+  if (!t.is_doomed && t.titan_type !== 'pilot' && t.titan_type !== 'unknown') {
+    hp += 2500
+  }
+  if (hp > 65000) return 0
+  return hp
+}
+
+function calcDamageTaken(timeline) {
+  if (!timeline || timeline.length < 2) return 0
+  let total = 0
+  for (let i = 1; i < timeline.length; i++) {
+    const prev = adjustHealth(timeline[i - 1])
+    const curr = adjustHealth(timeline[i])
+    if (curr < prev) {
+      total += prev - curr
+    }
+  }
+  return total
+}
+
 function getPlayerStat(match, name) {
   const p = match.players.find(p => p.name.toLowerCase() === name.toLowerCase())
   if (!p) return null
   const avg = p.deaths > 0 ? Math.round(p.damage / p.deaths) : p.damage
-  return { ...p, avg }
+  const damageTaken = calcDamageTaken(match.timeline)
+  return { ...p, avg, damageTaken }
 }
 
 // Extract unique titan types used in a timeline (excluding pilot/unknown)
@@ -129,22 +188,18 @@ function getPrimaryTitan(timeline) {
 function getChartData(timeline) {
   if (!timeline || !timeline.length) return null
 
-  function adjustHealth(t) {
-    let hp = t.health
-    if (!t.is_doomed && t.titan_type !== 'pilot' && t.titan_type !== 'unknown') {
-      hp += 2500
-    }
-    if (hp > 65000) return { hp: 0, executed: true }
-    return { hp, executed: false }
+  function adjustHealthChart(t) {
+    const hp = adjustHealth(t)
+    return { hp, executed: hp === 0 && t.health > 0 }
   }
 
   const segments = []
-  const first = adjustHealth(timeline[0])
+  const first = adjustHealthChart(timeline[0])
   let cur = { type: timeline[0].titan_type, points: [{ x: 0, y: first.hp, executed: first.executed, titanType: timeline[0].titan_type, sampleNum: timeline[0].sample_num }] }
 
   for (let i = 1; i < timeline.length; i++) {
     const t = timeline[i]
-    const { hp, executed } = adjustHealth(t)
+    const { hp, executed } = adjustHealthChart(t)
     const point = { x: i, y: hp, executed, titanType: t.titan_type, sampleNum: t.sample_num }
     if (t.titan_type !== cur.type) {
       cur.points.push(point)
@@ -240,12 +295,23 @@ function getChartData(timeline) {
         />
       </div>
 
-      <div v-if="hasMore" class="load-more-wrap">
-        <button class="load-more-btn" :disabled="loadingMore" @click="loadMore">
+      <div v-if="hasMore || hasNicknameRecord" class="load-more-wrap">
+        <button v-if="hasMore" class="load-more-btn" :disabled="loadingMore" @click="loadMore">
           {{ loadingMore ? '...' : '加载更多' }}
+        </button>
+        <button v-if="hasNicknameRecord" class="nickname-edit-btn" @click="openNicknameModal">
+          {{ currentNickname ? '修改别名' : '设置别名' }}
         </button>
       </div>
     </div>
+
+    <NicknameModal
+      v-if="showNicknameModal"
+      :playerName="nicknamePlayerName"
+      :currentNickname="currentNickname"
+      @close="showNicknameModal = false"
+      @save="onNicknameSaved"
+    />
   </div>
 </template>
 
@@ -330,5 +396,21 @@ function getChartData(timeline) {
 .load-more-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+.nickname-edit-btn {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.nickname-edit-btn:hover {
+  color: rgba(255, 255, 255, 0.6);
 }
 </style>

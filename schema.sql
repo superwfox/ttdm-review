@@ -20,7 +20,16 @@ CREATE TABLE IF NOT EXISTS timelines (
   sample_detail TEXT NOT NULL DEFAULT ''
 );
 
+CREATE TABLE IF NOT EXISTS nicknames (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  player_name TEXT NOT NULL,
+  ip TEXT NOT NULL,
+  nickname TEXT DEFAULT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_players_name ON players(name);
 CREATE INDEX IF NOT EXISTS idx_players_match ON players(match_id);
 CREATE INDEX IF NOT EXISTS idx_timelines_match ON timelines(match_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_timelines_unique ON timelines(match_id, uploader_name);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_nicknames_ip ON nicknames(ip);
+CREATE INDEX IF NOT EXISTS idx_nicknames_nickname ON nicknames(nickname COLLATE NOCASE);

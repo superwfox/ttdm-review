@@ -38,6 +38,16 @@ export async function onRequestGet(context) {
   }
 
   try {
+    // Check if name matches a nickname, redirect to player_name
+    let actualName = name
+    let redirectedFrom = null
+    const nickRow = await db.prepare(
+      'SELECT player_name FROM nicknames WHERE nickname COLLATE NOCASE = ? COLLATE NOCASE LIMIT 1'
+    ).bind(name).first()
+    if (nickRow) {
+      actualName = nickRow.player_name
+      redirectedFrom = name
+    }
     // Find paginated matches where this player appears, ordered by upload time DESC
     // Fetch one extra to determine has_more
     const matchRows = await db.prepare(
@@ -47,7 +57,7 @@ export async function onRequestGet(context) {
        WHERE p.name COLLATE NOCASE = ? COLLATE NOCASE
        ORDER BY m.uploaded_at DESC
        LIMIT ? OFFSET ?`
-    ).bind(name, PAGE_SIZE + 1, offset).all()
+    ).bind(actualName, PAGE_SIZE + 1, offset).all()
 
     if (!matchRows.results.length) {
       return Response.json({ ok: true, matches: [], has_more: false })
@@ -68,7 +78,7 @@ export async function onRequestGet(context) {
       // Get timeline for the queried player (if they uploaded one)
       const timelineRow = await db.prepare(
         'SELECT sample_detail FROM timelines WHERE match_id = ? AND uploader_name COLLATE NOCASE = ? COLLATE NOCASE LIMIT 1'
-      ).bind(matchId, name).first()
+      ).bind(matchId, actualName).first()
 
       let timeline = []
       if (timelineRow && timelineRow.sample_detail) {
@@ -83,7 +93,12 @@ export async function onRequestGet(context) {
       })
     }
 
-    return Response.json({ ok: true, matches, has_more })
+    const result = { ok: true, matches, has_more }
+    if (redirectedFrom) {
+      result.redirected_from = redirectedFrom
+      result.actual_name = actualName
+    }
+    return Response.json(result)
   } catch (e) {
     return Response.json({ ok: false, error: e.message }, { status: 500 })
   }

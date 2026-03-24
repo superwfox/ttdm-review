@@ -218,7 +218,9 @@ const chartPlugins = [crosshairPlugin]
             <span class="stat-label">DEATHS</span>
           </div>
           <div class="stat-item">
-            <span class="stat-value">{{ playerStat.damage }}</span>
+            <span class="stat-value">
+              {{ playerStat.damage }}<template v-if="playerStat.damageTaken > 0"><span class="damage-taken" :class="{ 'damage-higher': playerStat.damage > playerStat.damageTaken, 'damage-lower': playerStat.damage < playerStat.damageTaken }">{{ playerStat.damage > playerStat.damageTaken ? '>' : playerStat.damage < playerStat.damageTaken ? '<' : '=' }}{{ formatStat(playerStat.damageTaken) }}</span></template>
+            </span>
             <span class="stat-label">DAMAGE</span>
           </div>
         </div>
@@ -352,6 +354,12 @@ const chartPlugins = [crosshairPlugin]
   font-size: 11px;
   color: #444;
   letter-spacing: 1px;
+}
+
+.damage-taken {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.3);
+  margin-left: 2px;
 }
 
 /* Chart */
