@@ -47,6 +47,9 @@ __screenshots__/
 # Generated files
 seed.sql
 
+#client
+client
+
 font
 
 reference
