@@ -194,13 +194,16 @@ function getChartData(timeline) {
   }
 
   const segments = []
+  let runDmg = 0
   const first = adjustHealthChart(timeline[0])
-  let cur = { type: timeline[0].titan_type, points: [{ x: 0, y: first.hp, executed: first.executed, titanType: timeline[0].titan_type, sampleNum: timeline[0].sample_num }] }
+  runDmg += (timeline[0].delta_damage || 0)
+  let cur = { type: timeline[0].titan_type, points: [{ x: 0, y: first.hp, executed: first.executed, titanType: timeline[0].titan_type, sampleNum: timeline[0].sample_num, cumDeltaDmg: runDmg, deltaKills: timeline[0].delta_kills || 0 }] }
 
   for (let i = 1; i < timeline.length; i++) {
     const t = timeline[i]
     const { hp, executed } = adjustHealthChart(t)
-    const point = { x: i, y: hp, executed, titanType: t.titan_type, sampleNum: t.sample_num }
+    runDmg += (t.delta_damage || 0)
+    const point = { x: i, y: hp, executed, titanType: t.titan_type, sampleNum: t.sample_num, cumDeltaDmg: runDmg, deltaKills: t.delta_kills || 0 }
     if (t.titan_type !== cur.type) {
       cur.points.push(point)
       segments.push(cur)
@@ -260,7 +263,8 @@ function getChartData(timeline) {
 
   return {
     datasets,
-    y1Max: hasDelta ? Math.ceil(cumDmg / 0.75) : undefined
+    y1Max: hasDelta ? Math.ceil(cumDmg / 0.75) : undefined,
+    totalPoints: timeline.length
   }
 }
 </script>

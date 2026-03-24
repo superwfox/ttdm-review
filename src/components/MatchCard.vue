@@ -134,10 +134,15 @@ const chartOptions = {
           ? `<div style="font-size:14px;font-weight:bold;color:${hpColor};text-align:center;">处决</div>`
           : `<div style="font-size:14px;font-weight:bold;color:${hpColor};text-align:center;">${formatStat(hp)}</div>`
 
+        const dmgHtml = raw.cumDeltaDmg > 0
+          ? `<div style="font-size:12px;color:#FF9ECF;text-align:center;margin-top:2px;">${formatStat(raw.cumDeltaDmg)}${raw.deltaKills > 0 ? ' <span style="color:#fff;font-weight:bold;">☆' + raw.deltaKills + '</span>' : ''}</div>`
+          : ''
+
         tooltipEl.innerHTML = `
           <div style="font-size:11px;color:#888;text-align:center;margin-bottom:4px;">${sampleNum} / ${totalSamples.value}</div>
           ${iconHtml}
           ${hpText}
+          ${dmgHtml}
         `
 
         tooltipEl.style.opacity = '1'
@@ -154,7 +159,9 @@ const chartOptions = {
   scales: {
     x: {
       type: 'linear',
-      display: false
+      display: false,
+      min: 0,
+      max: (props.chartData?.totalPoints || 1) - 1
     },
     y: {
       beginAtZero: true,
