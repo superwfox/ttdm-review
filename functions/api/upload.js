@@ -19,16 +19,24 @@ function parseCSV(text) {
 function parseBinaryTimeline(base64Str) {
   const raw = atob(base64Str)
   const len = raw.length
-  if (len % 7 !== 0) return []
+  const is9 = len % 9 === 0
+  const is7 = len % 7 === 0
+  if (!is9 && !is7) return null
+  const step = is9 ? 9 : 7
   const samples = []
-  for (let i = 0; i < len; i += 7) {
+  for (let i = 0; i < len; i += step) {
     const b = idx => raw.charCodeAt(i + idx)
-    samples.push({
+    const s = {
       sample_num: b(0) | (b(1) << 8),
       health: b(2) | (b(3) << 8),
       titan_type: b(4),
       is_doomed: b(5) === 1 ? 1 : 0
-    })
+    }
+    if (is9) {
+      s.delta_damage = b(6) | (b(7) << 8)
+      s.delta_kills = b(8)
+    }
+    samples.push(s)
   }
   return samples
 }
@@ -152,8 +160,11 @@ export async function onRequestPost(context) {
     const playersData = parseCSV(players_csv)
     const timelineData = parseBinaryTimeline(timeline_bin)
 
-    if (!playersData.length || !timelineData.length) {
+    if (!playersData.length) {
       return Response.json({ ok: false, error: 'Data is empty or malformed' }, { status: 400 })
+    }
+    if (!timelineData || !timelineData.length) {
+      return Response.json({ ok: true, match_id: -1, uploader, dropped: true })
     }
 
     // ── Data validation: drop invalid but return success ──

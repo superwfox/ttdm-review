@@ -161,6 +161,12 @@ const chartOptions = {
       ticks: { color: '#444', font: { size: 10 } },
       grid: { color: 'rgba(255,255,255,0.04)' },
       border: { color: 'rgba(255,255,255,0.08)' }
+    },
+    y1: {
+      display: false,
+      min: 0,
+      max: 4000,
+      position: 'right'
     }
   }
 }

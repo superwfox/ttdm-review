@@ -182,6 +182,26 @@ function getChartData(timeline) {
     ds.fill = { target: 'origin', above: `rgba(${r},${g},${b},0.06)` }
   }
 
+  const hasDelta = timeline.some(t => t.delta_damage > 0)
+  if (hasDelta) {
+    const dmgPoints = timeline.map((t, i) => ({ x: i, y: t.delta_damage || 0 }))
+    const killRadii = timeline.map(t => (t.delta_kills > 0 ? 4 : 0))
+    datasets.push({
+      data: dmgPoints,
+      borderColor: '#FF9ECF',
+      borderWidth: 1.5,
+      pointRadius: killRadii,
+      pointBackgroundColor: '#FF9ECF',
+      pointBorderColor: '#FF9ECF',
+      hoverRadius: 0,
+      fill: false,
+      tension: 0.1,
+      yAxisID: 'y1',
+      parsing: { xAxisKey: 'x', yAxisKey: 'y' },
+      spanGaps: true
+    })
+  }
+
   return {
     datasets
   }
