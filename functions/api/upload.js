@@ -1,5 +1,5 @@
 function parseUploaderName(filename) {
-  const base = filename.replace(/\.(csv|bin)$/i, '')
+  const base = filename.replace(/\.(csv|bin|dat)$/i, '')
   // Match both HH-MM and HH-MM-SS timestamp formats
   const match = base.match(/^(.+)_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}(?:-\d{2})?_(players|timeline)$/i)
   return match ? match[1] : null
@@ -98,15 +98,15 @@ async function checkIpRate(kv, ip) {
   const raw = await kv.get(rateKey)
   const now = Date.now()
   let hits = raw ? JSON.parse(raw) : []
-  hits = hits.filter(t => now - t < 600000)
+  hits = hits.filter(t => now - t < 1200000)
   hits.push(now)
 
-  if (hits.length > 3) {
+  if (hits.length > 6) {
     await kv.put(banKey, '1', { expirationTtl: 86400 })
     return false
   }
 
-  await kv.put(rateKey, JSON.stringify(hits), { expirationTtl: 600 })
+  await kv.put(rateKey, JSON.stringify(hits), { expirationTtl: 1200 })
   return true
 }
 
