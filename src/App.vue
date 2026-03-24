@@ -238,8 +238,8 @@ function getChartData(timeline) {
   }
 
   const hasDelta = timeline.some(t => t.delta_damage > 0)
+  let cumDmg = 0
   if (hasDelta) {
-    let cumDmg = 0
     const dmgPoints = timeline.map((t, i) => { cumDmg += (t.delta_damage || 0); return { x: i, y: cumDmg } })
     const killRadii = timeline.map(t => (t.delta_kills > 0 ? 4 : 0))
     datasets.push({
