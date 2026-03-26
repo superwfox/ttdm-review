@@ -274,7 +274,7 @@ function getChartData(timeline) {
     <ScanlineBackground />
 
     <div class="container">
-      <h1 class="title">TTDM</h1>
+      <h1 class="title">T T D M</h1>
 
       <SearchBar
         v-model="searchName"
@@ -330,10 +330,10 @@ function getChartData(timeline) {
 
 /* Glass card */
 .glass-card {
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(var(--fg-rgb), 0.03);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(var(--fg-rgb), 0.08);
   border-radius: 12px;
   overflow: hidden;
 }
@@ -348,13 +348,13 @@ function getChartData(timeline) {
 }
 
 .title {
-  text-align: center;
   font-size: 48px;
-  letter-spacing: 4px;
   margin-bottom: -20px;
   font-weight: 900;
   position: relative;
   z-index: 2;
+  text-align: justify;
+  text-align-last: justify;
 }
 
 .error {
@@ -363,7 +363,7 @@ function getChartData(timeline) {
 }
 
 .empty {
-  color: #444;
+  color: rgba(var(--fg-rgb), 0.27);
   text-align: center;
   margin-top: 40px;
 }
@@ -379,13 +379,14 @@ function getChartData(timeline) {
 .load-more-wrap {
   display: flex;
   justify-content: center;
+  gap: 12px;
   margin-top: 24px;
 }
 
 .load-more-btn {
-  background: rgba(255, 255, 255, 0.06);
-  color: rgba(255, 255, 255, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(var(--fg-rgb), 0.06);
+  color: rgba(var(--fg-rgb), 0.6);
+  border: 1px solid rgba(var(--fg-rgb), 0.1);
   border-radius: 8px;
   padding: 12px 48px;
   font-size: 16px;
@@ -395,8 +396,8 @@ function getChartData(timeline) {
 }
 
 .load-more-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
+  background: rgba(var(--fg-rgb), 0.1);
+  color: rgb(var(--fg-rgb));
 }
 
 .load-more-btn:disabled {
@@ -405,18 +406,19 @@ function getChartData(timeline) {
 }
 
 .nickname-edit-btn {
-  background: transparent;
-  color: rgba(255, 255, 255, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(var(--fg-rgb), 0.06);
+  color: rgba(var(--fg-rgb), 0.6);
+  border: 1px solid rgba(var(--fg-rgb), 0.1);
   border-radius: 8px;
-  padding: 8px 16px;
-  font-size: 13px;
+  padding: 12px 48px;
+  font-size: 16px;
   font-family: inherit;
   cursor: pointer;
-  transition: color 0.2s;
+  transition: background 0.2s, color 0.2s;
 }
 
 .nickname-edit-btn:hover {
-  color: rgba(255, 255, 255, 0.6);
+  background: rgba(var(--fg-rgb), 0.1);
+  color: rgb(var(--fg-rgb));
 }
 </style>

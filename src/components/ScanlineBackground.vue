@@ -66,9 +66,9 @@ onUnmounted(() => {
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(255,255,255,0.4) 20%,
-    rgba(255,255,255,0.8) 50%,
-    rgba(255,255,255,0.4) 80%,
+    rgba(var(--fg-rgb),0.4) 20%,
+    rgba(var(--fg-rgb),0.8) 50%,
+    rgba(var(--fg-rgb),0.4) 80%,
     transparent 100%
   );
   pointer-events: none;

@@ -13,6 +13,11 @@ const props = defineProps({
 
 const expanded = ref(false)
 
+// Read CSS theme variables for canvas-based rendering
+const rootStyle = getComputedStyle(document.documentElement)
+const fgRgb = rootStyle.getPropertyValue('--fg-rgb').trim() || '255,255,255'
+const bgRgb = rootStyle.getPropertyValue('--bg-rgb').trim() || '0,0,0'
+
 function formatTime(utcStr) {
   if (!utcStr) return ''
   const d = new Date(utcStr + 'Z')
@@ -68,12 +73,12 @@ const crosshairPlugin = {
     ctx.moveTo(x, yAxis.top)
     ctx.lineTo(x, yAxis.bottom)
     ctx.lineWidth = 1
-    ctx.strokeStyle = 'rgba(255,255,255,0.24)'
+    ctx.strokeStyle = `rgba(${fgRgb},0.24)`
     ctx.stroke()
 
     ctx.beginPath()
     ctx.arc(x, y, 6, 0, Math.PI * 2)
-    ctx.fillStyle = '#030303'
+    ctx.fillStyle = `rgb(${bgRgb})`
     ctx.fill()
     ctx.lineWidth = 2
     ctx.strokeStyle = '#00e5ff'
@@ -124,7 +129,7 @@ const chartOptions = {
         const titanType = raw.titanType || 'unknown'
         const sampleNum = raw.sampleNum || (raw.x + 1)
         const titanCfg = props.titans[titanType]
-        const hpColor = executed ? '#ff1744' : hp < 1500 ? '#ff9100' : '#fff'
+        const hpColor = executed ? '#ff1744' : hp < 1500 ? '#ff9100' : `rgb(${fgRgb})`
 
         const iconHtml = titanCfg?.icon
           ? `<img src="${titanCfg.icon}" style="width:32px;height:32px;object-fit:cover;display:block;margin:0 auto 4px;">`
@@ -135,11 +140,11 @@ const chartOptions = {
           : `<div style="font-size:14px;font-weight:bold;color:${hpColor};text-align:center;">${formatStat(hp)}</div>`
 
         const dmgHtml = raw.cumDeltaDmg > 0
-          ? `<div style="font-size:12px;color:#FF9ECF;text-align:center;margin-top:2px;">${formatStat(raw.cumDeltaDmg)}${raw.deltaKills > 0 ? ' <span style="color:#fff;font-weight:bold;">☆' + raw.deltaKills + '</span>' : ''}</div>`
+          ? `<div style="font-size:12px;color:#FF9ECF;text-align:center;margin-top:2px;">${formatStat(raw.cumDeltaDmg)}${raw.deltaKills > 0 ? ` <span style="color:rgb(${fgRgb});font-weight:bold;">☆` + raw.deltaKills + '</span>' : ''}</div>`
           : ''
 
         tooltipEl.innerHTML = `
-          <div style="font-size:11px;color:#888;text-align:center;margin-bottom:4px;">${sampleNum} / ${totalSamples.value}</div>
+          <div style="font-size:11px;color:rgba(${fgRgb},0.53);text-align:center;margin-bottom:4px;">${sampleNum} / ${totalSamples.value}</div>
           ${iconHtml}
           ${hpText}
           ${dmgHtml}
@@ -165,9 +170,9 @@ const chartOptions = {
     },
     y: {
       beginAtZero: true,
-      ticks: { color: '#444', font: { size: 10 } },
-      grid: { color: 'rgba(255,255,255,0.04)' },
-      border: { color: 'rgba(255,255,255,0.08)' }
+      ticks: { color: `rgba(${fgRgb},0.27)`, font: { size: 10 } },
+      grid: { color: `rgba(${fgRgb},0.04)` },
+      border: { color: `rgba(${fgRgb},0.08)` }
     },
     y1: {
       display: false,
@@ -301,7 +306,7 @@ const chartPlugins = [crosshairPlugin]
 }
 
 .match-time {
-  color: #555;
+  color: rgba(var(--fg-rgb), 0.33);
   font-size: 13px;
 }
 
@@ -326,7 +331,7 @@ const chartPlugins = [crosshairPlugin]
 
 .avg-label {
   font-size: 14px;
-  color: #555;
+  color: rgba(var(--fg-rgb), 0.33);
 }
 
 .titan-icons {
@@ -359,13 +364,13 @@ const chartPlugins = [crosshairPlugin]
 
 .stat-label {
   font-size: 11px;
-  color: #444;
+  color: rgba(var(--fg-rgb), 0.27);
   letter-spacing: 1px;
 }
 
 .damage-taken {
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.3);
+  color: rgba(var(--fg-rgb), 0.3);
   margin-left: 2px;
 }
 
@@ -377,7 +382,7 @@ const chartPlugins = [crosshairPlugin]
 }
 
 .no-timeline {
-  color: #333;
+  color: rgba(var(--fg-rgb), 0.2);
   font-size: 13px;
   margin-top: 8px;
 }
@@ -386,8 +391,8 @@ const chartPlugins = [crosshairPlugin]
 .chart-wrap :deep(.chart-tooltip) {
   position: absolute;
   pointer-events: none;
-  background: rgba(0,0,0,0.85);
-  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(var(--bg-rgb), 0.85);
+  border: 1px solid rgba(var(--fg-rgb), 0.15);
   border-radius: 6px;
   padding: 6px 10px;
   transition: opacity 0.15s;
@@ -415,13 +420,13 @@ const chartPlugins = [crosshairPlugin]
   display: block;
   width: 20px;
   height: 2px;
-  background: rgba(255,255,255,0.4);
+  background: rgba(var(--fg-rgb), 0.4);
   border-radius: 1px;
   transition: background 0.2s;
 }
 
 .hamburger-icon.active span {
-  background: rgba(255,255,255,0.7);
+  background: rgba(var(--fg-rgb), 0.7);
 }
 
 /* Expand panel with animation */
@@ -431,7 +436,7 @@ const chartPlugins = [crosshairPlugin]
   transition: grid-template-rows 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   opacity: 0;
   margin-top: 16px;
-  border-top: 1px solid rgba(255,255,255,0.06);
+  border-top: 1px solid rgba(var(--fg-rgb), 0.06);
 }
 
 .expand-panel.open {
@@ -462,7 +467,7 @@ const chartPlugins = [crosshairPlugin]
 
 .player-name {
   min-width: 0;
-  color: rgba(255,255,255,0.7);
+  color: rgba(var(--fg-rgb), 0.7);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -470,7 +475,7 @@ const chartPlugins = [crosshairPlugin]
 
 .player-avg {
   font-weight: bold;
-  color: #fff;
+  color: rgb(var(--fg-rgb));
 }
 
 .player-avg,
@@ -483,14 +488,14 @@ const chartPlugins = [crosshairPlugin]
 .player-kills,
 .player-deaths,
 .player-damage {
-  color: rgba(255,255,255,0.58);
+  color: rgba(var(--fg-rgb), 0.58);
 }
 
 .player-head {
   padding-top: 0;
   padding-bottom: 8px;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
-  color: rgba(255,255,255,0.35);
+  border-bottom: 1px solid rgba(var(--fg-rgb), 0.08);
+  color: rgba(var(--fg-rgb), 0.35);
   font-size: 11px;
   letter-spacing: 0.8px;
 }

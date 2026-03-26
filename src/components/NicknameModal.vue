@@ -73,13 +73,13 @@ async function save() {
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(var(--bg-rgb), 0.5);
   padding-bottom: 32px;
 }
 
 .nickname-modal {
-  background: #1a1a1a;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(var(--bg-rgb), 0.9);
+  border: 1px solid rgba(var(--fg-rgb), 0.1);
   border-radius: 12px;
   padding: 24px;
   width: 90%;
@@ -100,21 +100,21 @@ async function save() {
 
 .nickname-desc {
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(var(--fg-rgb), 0.5);
   margin-bottom: 16px;
   line-height: 1.5;
 }
 
 .nickname-desc strong {
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(var(--fg-rgb), 0.8);
 }
 
 .nickname-input {
   width: 100%;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(var(--fg-rgb), 0.06);
+  border: 1px solid rgba(var(--fg-rgb), 0.12);
   border-radius: 8px;
-  color: #fff;
+  color: rgb(var(--fg-rgb));
   padding: 12px 16px;
   font-size: 16px;
   font-family: inherit;
@@ -123,7 +123,7 @@ async function save() {
 }
 
 .nickname-input:focus {
-  border-color: rgba(255, 255, 255, 0.3);
+  border-color: rgba(var(--fg-rgb), 0.3);
 }
 
 .nickname-error {
@@ -150,13 +150,13 @@ async function save() {
 }
 
 .nickname-btn.cancel {
-  background: rgba(255, 255, 255, 0.06);
-  color: rgba(255, 255, 255, 0.6);
+  background: rgba(var(--fg-rgb), 0.06);
+  color: rgba(var(--fg-rgb), 0.6);
 }
 
 .nickname-btn.confirm {
-  background: #fff;
-  color: #000;
+  background: rgb(var(--fg-rgb));
+  color: rgb(var(--bg-rgb));
 }
 
 .nickname-btn:disabled {
