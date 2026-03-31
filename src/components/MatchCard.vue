@@ -334,17 +334,14 @@ const chartKey = computed(() =>
 .card {
   position: relative;
   transition:
-    width 0.5s cubic-bezier(0.4, 0, 0.2, 1),
-    max-width 0.5s cubic-bezier(0.4, 0, 0.2, 1),
-    margin-left 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+    margin 0.5s cubic-bezier(0.4, 0, 0.2, 1),
     border-radius 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Expanded card: full viewport width */
+/* Expanded card: stretch via equal negative margins on both sides */
 .card.chart-expanded {
-  width: 100vw;
-  max-width: 100vw;
-  margin-left: calc((-100vw + 100%) / 2);
+  margin-left: calc((100% - 100vw) / 2);
+  margin-right: calc((100% - 100vw) / 2);
   border-radius: 0;
 }
 
@@ -354,8 +351,8 @@ const chartKey = computed(() =>
   left: 0;
   right: 0;
   height: 320px;
-  background-size: cover;
-  background-position: center right;
+  background-size: auto 100%;
+  background-position: right top;
   background-repeat: no-repeat;
   mask-image: linear-gradient(to left, rgba(0,0,0,0.25) 0%, transparent 60%);
   -webkit-mask-image: linear-gradient(to left, rgba(0,0,0,0.25) 0%, transparent 60%);

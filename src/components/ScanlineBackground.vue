@@ -33,11 +33,14 @@ function spawnScanline() {
 
 function spawnMeteor() {
   const id = ++meteorId
-  const offset = (Math.random() - 0.5) * 80 // -40vw ~ +40vw
-  meteors.value.push({ id, offset })
+  const offsetX = (Math.random() - 0.5) * 80 // -40vw ~ +40vw
+  const angle = 30 + Math.random() * 25 // 30-55deg, roughly toward lower-left
+  const duration = 3.5 + Math.random() * 2.5 // 3.5-6s
+  const tailLen = 140 + Math.random() * 120 // 140-260px
+  meteors.value.push({ id, offsetX, angle, duration, tailLen })
   setTimeout(() => {
     meteors.value = meteors.value.filter(m => m.id !== id)
-  }, 5800)
+  }, duration * 1000 + 200)
 }
 
 onMounted(() => {
@@ -63,7 +66,12 @@ onUnmounted(() => {
       v-for="m in meteors"
       :key="m.id"
       class="meteor"
-      :style="{ '--m-offset': m.offset + 'vw' }"
+      :style="{
+        '--m-offset': m.offsetX + 'vw',
+        '--m-angle': m.angle + 'deg',
+        '--m-duration': m.duration + 's',
+        height: m.tailLen + 'px'
+      }"
     ></div>
   </div>
 </template>
@@ -126,6 +134,7 @@ onUnmounted(() => {
 }
 
 /* Meteor: small white square head + long wheat tail, slight glow */
+/* Direction is independent from scanlines — each meteor has its own random angle */
 .meteor {
   position: fixed;
   top: 50%;
@@ -144,16 +153,16 @@ onUnmounted(() => {
   border-radius: 1.5px;
   pointer-events: none;
   z-index: 0;
-  animation: meteor-sweep 5.6s linear forwards;
+  animation: meteor-fall var(--m-duration, 4.5s) linear forwards;
   transform-origin: center center;
   box-shadow:
     0 0 4px 1px rgba(255,255,255,0.35),
     0 0 10px 2px rgba(245,222,179,0.2);
 }
 
-@keyframes meteor-sweep {
+@keyframes meteor-fall {
   0% {
-    transform: translate(-50%, -50%) rotate(-45deg) translate(var(--m-offset), 130vmax);
+    transform: translate(-50%, -50%) rotate(var(--m-angle, 40deg)) translate(var(--m-offset, 0), -130vmax);
     opacity: 0;
   }
   4% {
@@ -163,7 +172,7 @@ onUnmounted(() => {
     opacity: 1;
   }
   100% {
-    transform: translate(-50%, -50%) rotate(-45deg) translate(var(--m-offset), -130vmax);
+    transform: translate(-50%, -50%) rotate(var(--m-angle, 40deg)) translate(var(--m-offset, 0), 130vmax);
     opacity: 0;
   }
 }
