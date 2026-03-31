@@ -133,31 +133,71 @@ onUnmounted(() => {
   }
 }
 
-/* Meteor: small white square head + long wheat tail, slight glow */
+/* Meteor: bright head at bottom (leading edge), fading trail above */
 /* Direction is independent from scanlines — each meteor has its own random angle */
 .meteor {
   position: fixed;
   top: 50%;
   left: 50%;
-  width: 3px;
+  width: 4px;
   height: 200px;
+  /* Head (bright) at bottom = leading edge; tail (transparent) at top = trailing */
   background: linear-gradient(
-    to bottom,
-    #ffffff 0%,
-    #ffffff 1.5%,
-    wheat 4%,
-    rgba(245,222,179,0.5) 30%,
-    rgba(245,222,179,0.15) 60%,
+    to top,
+    rgba(255,255,255,0.9) 0%,
+    wheat 3%,
+    rgba(245,222,179,0.5) 12%,
+    rgba(245,222,179,0.2) 35%,
+    rgba(245,222,179,0.06) 60%,
     transparent 100%
   );
-  border-radius: 1.5px;
+  border-radius: 2px;
   pointer-events: none;
   z-index: 0;
   animation: meteor-fall var(--m-duration, 4.5s) linear forwards;
   transform-origin: center center;
+  /* Soft ambient glow along the trail */
   box-shadow:
-    0 0 4px 1px rgba(255,255,255,0.35),
-    0 0 10px 2px rgba(245,222,179,0.2);
+    0 0 8px 2px rgba(255,255,255,0.25),
+    0 0 18px 4px rgba(245,222,179,0.12);
+}
+
+/* Bright glowing head at the leading edge (bottom) */
+.meteor::before {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 5px;
+  height: 5px;
+  background: #fff;
+  border-radius: 1px;
+  box-shadow:
+    0 0 6px 3px rgba(255,255,255,0.8),
+    0 0 16px 6px rgba(245,222,179,0.5),
+    0 0 30px 10px rgba(245,222,179,0.15);
+}
+
+/* Trailing debris particles — gradually smaller squares behind the head */
+.meteor::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  background: transparent;
+  /* Each box-shadow is a particle: (drift, distance-behind, blur, size, color) */
+  box-shadow:
+     1px  -18px  1px 1.8px rgba(255,255,255,0.6),
+    -2px  -42px  1px 1.5px rgba(255,255,255,0.45),
+     2px  -70px  1px 1.2px rgba(245,222,179,0.38),
+    -1px -100px  1px 1px   rgba(245,222,179,0.28),
+     2px -135px  0   0.8px rgba(245,222,179,0.2),
+    -2px -170px  0   0.6px rgba(245,222,179,0.12),
+     1px -210px  0   0.5px rgba(245,222,179,0.07);
 }
 
 @keyframes meteor-fall {
