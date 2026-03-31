@@ -338,11 +338,11 @@ const chartKey = computed(() =>
     border-radius 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Expanded card: stretch via equal negative margins on both sides */
+/* Expanded card: stretch via equal negative margins, keep 5px from edges */
 .card.chart-expanded {
-  margin-left: calc((100% - 100vw) / 2);
-  margin-right: calc((100% - 100vw) / 2);
-  border-radius: 0;
+  margin-left: calc((100% - 100vw) / 2 + 5px);
+  margin-right: calc((100% - 100vw) / 2 + 5px);
+  border-radius: 4px;
 }
 
 .card-banner {
@@ -472,23 +472,25 @@ const chartKey = computed(() =>
   z-index: 10;
 }
 
-/* Card toggles area */
+/* Card toggles area — shifted down */
 .card-toggles {
   position: absolute;
-  bottom: 12px;
+  bottom: 6px;
   right: 16px;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   z-index: 2;
 }
 
-/* Per-life damage checkbox */
-.toggle-checkbox {
-  width: 20px;
-  height: 20px;
-  border-radius: 4px;
-  border: 1.5px solid rgba(var(--fg-rgb), 0.3);
+/* Shared toggle button base — unified rounded rectangle */
+.toggle-checkbox,
+.toggle-expand-chart,
+.hamburger-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: 1.5px solid rgba(var(--fg-rgb), 0.2);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -497,73 +499,62 @@ const chartKey = computed(() =>
   box-sizing: border-box;
 }
 
-.toggle-checkbox:hover {
-  border-color: rgba(var(--fg-rgb), 0.5);
+.toggle-checkbox:hover,
+.toggle-expand-chart:hover,
+.hamburger-icon:hover {
+  border-color: rgba(var(--fg-rgb), 0.4);
+  background: rgba(var(--fg-rgb), 0.06);
 }
 
-.toggle-checkbox.checked {
-  background: rgb(var(--fg-rgb));
-  border-color: rgb(var(--fg-rgb));
+/* Active / checked state — filled background */
+.toggle-checkbox.checked,
+.toggle-expand-chart.active,
+.hamburger-icon.active {
+  background: rgba(var(--fg-rgb), 0.15);
+  border-color: rgba(var(--fg-rgb), 0.4);
 }
 
+/* Per-life damage checkbox */
 .toggle-checkbox .check-svg {
   width: 14px;
   height: 14px;
-  color: transparent;
+  color: rgba(var(--fg-rgb), 0.35);
   transition: color 0.2s;
 }
 
 .toggle-checkbox.checked .check-svg {
-  color: rgb(var(--bg-rgb));
+  color: rgb(var(--fg-rgb));
 }
 
 /* Expand chart toggle */
-.toggle-expand-chart {
-  width: 20px;
-  height: 20px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: opacity 0.2s;
-}
-
 .toggle-expand-chart .expand-svg {
-  width: 16px;
-  height: 16px;
-  color: rgba(var(--fg-rgb), 0.4);
+  width: 14px;
+  height: 14px;
+  color: rgba(var(--fg-rgb), 0.35);
   transition: color 0.2s;
 }
 
-.toggle-expand-chart:hover .expand-svg {
-  color: rgba(var(--fg-rgb), 0.7);
-}
-
 .toggle-expand-chart.active .expand-svg {
-  color: rgba(var(--fg-rgb), 0.8);
+  color: rgb(var(--fg-rgb));
 }
 
 /* Hamburger (expand player list) */
 .hamburger-icon {
-  display: flex;
   flex-direction: column;
-  gap: 4px;
-  cursor: pointer;
-  padding: 2px 0;
-  transition: transform 0.2s;
+  gap: 3px;
 }
 
 .hamburger-icon span {
   display: block;
-  width: 20px;
-  height: 2px;
-  background: rgba(var(--fg-rgb), 0.4);
+  width: 14px;
+  height: 1.5px;
+  background: rgba(var(--fg-rgb), 0.35);
   border-radius: 1px;
   transition: background 0.2s;
 }
 
 .hamburger-icon.active span {
-  background: rgba(var(--fg-rgb), 0.7);
+  background: rgb(var(--fg-rgb));
 }
 
 /* Expand panel with animation */
