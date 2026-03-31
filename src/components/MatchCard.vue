@@ -338,11 +338,11 @@ const chartKey = computed(() =>
     border-radius 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Expanded card: stretch via equal negative margins, keep 5px from edges */
+/* Expanded card: stretch via equal negative margins, keep visible gap from edges */
 .card.chart-expanded {
-  margin-left: calc((100% - 100vw) / 2 + 5px);
-  margin-right: calc((100% - 100vw) / 2 + 5px);
-  border-radius: 4px;
+  margin-left: calc((100% - 100vw) / 2 + 16px);
+  margin-right: calc((100% - 100vw) / 2 + 16px);
+  border-radius: 8px;
 }
 
 .card-banner {
@@ -472,14 +472,13 @@ const chartKey = computed(() =>
   z-index: 10;
 }
 
-/* Card toggles area — shifted down */
+/* Card toggles area — flow-based, right-aligned */
 .card-toggles {
-  position: absolute;
-  bottom: 6px;
-  right: 16px;
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 8px;
+  margin-top: 10px;
   z-index: 2;
 }
 
