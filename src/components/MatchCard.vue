@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { Line } from 'vue-chartjs'
 
 const props = defineProps({
@@ -8,10 +8,18 @@ const props = defineProps({
   usedTitans: { type: Array, default: () => [] },
   primaryTitan: { type: String, default: null },
   chartData: { type: Object, default: null },
+  chartDataPerLife: { type: Object, default: null },
   titans: { type: Object, required: true }
 })
 
 const expanded = ref(false)
+const perLifeDamage = ref(false)
+const chartExpanded = ref(false)
+
+// Active chart data switches based on per-life toggle
+const activeChartData = computed(() =>
+  perLifeDamage.value && props.chartDataPerLife ? props.chartDataPerLife : props.chartData
+)
 
 // Read CSS theme variables for canvas-based rendering
 const rootStyle = getComputedStyle(document.documentElement)
@@ -87,107 +95,125 @@ const crosshairPlugin = {
   }
 }
 
-const chartOptions = {
-  responsive: true,
-  maintainAspectRatio: false,
-  animation: false,
-  interaction: {
-    mode: 'nearest',
-    axis: 'x',
-    intersect: false
-  },
-  elements: {
-    point: {
-      radius: 0,
-      hoverRadius: 0,
-      hitRadius: 14
-    }
-  },
-  plugins: {
-    tooltip: {
-      enabled: false,
-      external: function(context) {
-        let tooltipEl = context.chart.canvas.parentNode.querySelector('.chart-tooltip')
-        if (!tooltipEl) {
-          tooltipEl = document.createElement('div')
-          tooltipEl.className = 'chart-tooltip'
-          context.chart.canvas.parentNode.appendChild(tooltipEl)
-        }
-
-        const tooltipModel = context.tooltip
-        if (tooltipModel.opacity === 0) {
-          tooltipEl.style.opacity = '0'
-          return
-        }
-
-        const dataPoint = tooltipModel.dataPoints?.[0]
-        if (!dataPoint) return
-
-        const raw = dataPoint.raw
-        const hp = raw.y
-        const executed = raw.executed
-        const titanType = raw.titanType || 'unknown'
-        const sampleNum = raw.sampleNum || (raw.x + 1)
-        const titanCfg = props.titans[titanType]
-        const hpColor = executed ? '#ff1744' : hp < 1500 ? '#ff9100' : `rgb(${fgRgb})`
-
-        const iconHtml = titanCfg?.icon
-          ? `<img src="${titanCfg.icon}" style="width:32px;height:32px;object-fit:cover;display:block;margin:0 auto 4px;">`
-          : ''
-
-        const hpText = executed
-          ? `<div style="font-size:14px;font-weight:bold;color:${hpColor};text-align:center;">处决</div>`
-          : `<div style="font-size:14px;font-weight:bold;color:${hpColor};text-align:center;">${formatStat(hp)}</div>`
-
-        const dmgHtml = raw.cumDeltaDmg > 0
-          ? `<div style="font-size:12px;color:#FF9ECF;text-align:center;margin-top:2px;">${formatStat(raw.cumDeltaDmg)}${raw.deltaKills > 0 ? ` <span style="color:rgb(${fgRgb});font-weight:bold;">☆` + raw.deltaKills + '</span>' : ''}</div>`
-          : ''
-
-        tooltipEl.innerHTML = `
-          <div style="font-size:11px;color:rgba(${fgRgb},0.53);text-align:center;margin-bottom:4px;">${sampleNum} / ${totalSamples.value}</div>
-          ${iconHtml}
-          ${hpText}
-          ${dmgHtml}
-        `
-
-        tooltipEl.style.opacity = '1'
-        const tooltipWidth = tooltipEl.offsetWidth || 80
-        const maxLeft = context.chart.width - tooltipWidth
-        const left = Math.max(0, Math.min(tooltipModel.caretX - tooltipWidth / 2, maxLeft))
-        const top = Math.max(0, tooltipModel.caretY - tooltipEl.offsetHeight - 10)
-        tooltipEl.style.left = left + 'px'
-        tooltipEl.style.top = top + 'px'
+// Reactive chart options — y1Max adapts when toggling per-life mode
+const chartOptions = computed(() => {
+  const data = activeChartData.value
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: false,
+    interaction: {
+      mode: 'nearest',
+      axis: 'x',
+      intersect: false
+    },
+    elements: {
+      point: {
+        radius: 0,
+        hoverRadius: 0,
+        hitRadius: 14
       }
     },
-    legend: { display: false }
-  },
-  scales: {
-    x: {
-      type: 'linear',
-      display: false,
-      min: 0,
-      max: (props.chartData?.totalPoints || 1) - 1
+    plugins: {
+      tooltip: {
+        enabled: false,
+        external: function(context) {
+          let tooltipEl = context.chart.canvas.parentNode.querySelector('.chart-tooltip')
+          if (!tooltipEl) {
+            tooltipEl = document.createElement('div')
+            tooltipEl.className = 'chart-tooltip'
+            context.chart.canvas.parentNode.appendChild(tooltipEl)
+          }
+
+          const tooltipModel = context.tooltip
+          if (tooltipModel.opacity === 0) {
+            tooltipEl.style.opacity = '0'
+            return
+          }
+
+          const dataPoint = tooltipModel.dataPoints?.[0]
+          if (!dataPoint) return
+
+          const raw = dataPoint.raw
+          const hp = raw.y
+          const executed = raw.executed
+          const titanType = raw.titanType || 'unknown'
+          const sampleNum = raw.sampleNum || (raw.x + 1)
+          const titanCfg = props.titans[titanType]
+          const hpColor = executed ? '#ff1744' : hp < 1500 ? '#ff9100' : `rgb(${fgRgb})`
+
+          const iconHtml = titanCfg?.icon
+            ? `<img src="${titanCfg.icon}" style="width:32px;height:32px;object-fit:cover;display:block;margin:0 auto 4px;">`
+            : ''
+
+          const hpText = executed
+            ? `<div style="font-size:14px;font-weight:bold;color:${hpColor};text-align:center;">处决</div>`
+            : `<div style="font-size:14px;font-weight:bold;color:${hpColor};text-align:center;">${formatStat(hp)}</div>`
+
+          // Damage tooltip: per-life shows lifeDmg/lifeMaxDmg, normal shows cumDeltaDmg
+          let dmgHtml = ''
+          if (raw.lifeDmg !== undefined) {
+            // Per-life mode
+            if (raw.lifeDmg > 0 || raw.lifeMaxDmg > 0) {
+              const killHtml = raw.deltaKills > 0 ? ` <span style="color:rgb(${fgRgb});font-weight:bold;">☆${raw.deltaKills}</span>` : ''
+              dmgHtml = `<div style="font-size:12px;color:#FF9ECF;text-align:center;margin-top:2px;">${formatStat(raw.lifeDmg)} / ${formatStat(raw.lifeMaxDmg)}${killHtml}</div>`
+            }
+          } else if (raw.cumDeltaDmg > 0) {
+            // Normal mode
+            dmgHtml = `<div style="font-size:12px;color:#FF9ECF;text-align:center;margin-top:2px;">${formatStat(raw.cumDeltaDmg)}${raw.deltaKills > 0 ? ` <span style="color:rgb(${fgRgb});font-weight:bold;">☆` + raw.deltaKills + '</span>' : ''}</div>`
+          }
+
+          tooltipEl.innerHTML = `
+            <div style="font-size:11px;color:rgba(${fgRgb},0.53);text-align:center;margin-bottom:4px;">${sampleNum} / ${totalSamples.value}</div>
+            ${iconHtml}
+            ${hpText}
+            ${dmgHtml}
+          `
+
+          tooltipEl.style.opacity = '1'
+          const tooltipWidth = tooltipEl.offsetWidth || 80
+          const maxLeft = context.chart.width - tooltipWidth
+          const left = Math.max(0, Math.min(tooltipModel.caretX - tooltipWidth / 2, maxLeft))
+          const top = Math.max(0, tooltipModel.caretY - tooltipEl.offsetHeight - 10)
+          tooltipEl.style.left = left + 'px'
+          tooltipEl.style.top = top + 'px'
+        }
+      },
+      legend: { display: false }
     },
-    y: {
-      beginAtZero: true,
-      ticks: { color: `rgba(${fgRgb},0.27)`, font: { size: 10 } },
-      grid: { color: `rgba(${fgRgb},0.04)` },
-      border: { color: `rgba(${fgRgb},0.08)` }
-    },
-    y1: {
-      display: false,
-      min: 0,
-      max: props.chartData?.y1Max || 4000,
-      position: 'right'
+    scales: {
+      x: {
+        type: 'linear',
+        display: false,
+        min: 0,
+        max: (data?.totalPoints || 1) - 1
+      },
+      y: {
+        beginAtZero: true,
+        ticks: { color: `rgba(${fgRgb},0.27)`, font: { size: 10 } },
+        grid: { color: `rgba(${fgRgb},0.04)` },
+        border: { color: `rgba(${fgRgb},0.08)` }
+      },
+      y1: {
+        display: false,
+        min: 0,
+        max: data?.y1Max || 4000,
+        position: 'right'
+      }
     }
   }
-}
+})
 
 const chartPlugins = [crosshairPlugin]
+
+// Force chart key to trigger re-render when toggling modes
+const chartKey = computed(() =>
+  `${perLifeDamage.value ? 'life' : 'cum'}-${chartExpanded.value ? 'exp' : 'col'}`
+)
 </script>
 
 <template>
-  <div class="glass-card card">
+  <div class="glass-card card" :class="{ 'chart-expanded': chartExpanded }">
     <!-- Banner background -->
     <div
       v-if="bannerUrl"
@@ -238,14 +264,43 @@ const chartPlugins = [crosshairPlugin]
         </div>
       </template>
 
-      <div v-if="chartData" class="chart-wrap">
-        <Line :data="chartData" :options="chartOptions" :plugins="chartPlugins" />
+      <div v-if="activeChartData" class="chart-wrap">
+        <Line :key="chartKey" :data="activeChartData" :options="chartOptions" :plugins="chartPlugins" />
       </div>
       <div v-else class="no-timeline">该玩家未上传 Timeline</div>
 
-      <!-- Expand toggle -->
-      <div class="expand-toggle" @click="toggleExpand">
-        <div class="hamburger-icon" :class="{ active: expanded }">
+      <!-- Card toggles area -->
+      <div class="card-toggles">
+        <!-- Per-life damage toggle -->
+        <div
+          v-if="chartData"
+          class="toggle-checkbox"
+          :class="{ checked: perLifeDamage }"
+          @click="perLifeDamage = !perLifeDamage"
+          title="每条生命伤害"
+        >
+          <svg viewBox="0 0 16 16" class="check-svg">
+            <polyline points="3.5 8 6.5 11.5 12.5 4.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+
+        <!-- Expand chart toggle -->
+        <div
+          v-if="chartData"
+          class="toggle-expand-chart"
+          :class="{ active: chartExpanded }"
+          @click="chartExpanded = !chartExpanded"
+          title="展开图表"
+        >
+          <svg viewBox="0 0 16 16" class="expand-svg">
+            <path d="M10 2h4v4M6 14H2v-4" stroke="currentColor" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <line x1="14" y1="2" x2="9" y2="7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            <line x1="2" y1="14" x2="7" y2="9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+
+        <!-- Expand player list toggle (hamburger) -->
+        <div class="hamburger-icon" :class="{ active: expanded }" @click="toggleExpand">
           <span></span>
           <span></span>
           <span></span>
@@ -278,6 +333,19 @@ const chartPlugins = [crosshairPlugin]
 <style scoped>
 .card {
   position: relative;
+  transition:
+    width 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+    max-width 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+    margin-left 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+    border-radius 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Expanded card: full viewport width */
+.card.chart-expanded {
+  width: 100vw;
+  max-width: 100vw;
+  margin-left: calc((-100vw + 100%) / 2);
+  border-radius: 0;
 }
 
 .card-banner {
@@ -293,6 +361,14 @@ const chartPlugins = [crosshairPlugin]
   -webkit-mask-image: linear-gradient(to left, rgba(0,0,0,0.25) 0%, transparent 60%);
   pointer-events: none;
   border-radius: 12px;
+  transition: mask-image 0.5s, -webkit-mask-image 0.5s, border-radius 0.5s;
+}
+
+/* When expanded: show more of the banner, only fade at left edge */
+.card.chart-expanded .card-banner {
+  mask-image: linear-gradient(to right, transparent 0%, rgba(0,0,0,0.25) 160px, rgba(0,0,0,0.25) 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, rgba(0,0,0,0.25) 160px, rgba(0,0,0,0.25) 100%);
+  border-radius: 0;
 }
 
 .card-content {
@@ -399,20 +475,84 @@ const chartPlugins = [crosshairPlugin]
   z-index: 10;
 }
 
-/* Expand toggle */
-.expand-toggle {
+/* Card toggles area */
+.card-toggles {
   position: absolute;
   bottom: 12px;
   right: 16px;
-  cursor: pointer;
-  padding: 6px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
   z-index: 2;
 }
 
+/* Per-life damage checkbox */
+.toggle-checkbox {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  border: 1.5px solid rgba(var(--fg-rgb), 0.3);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s, border-color 0.2s;
+  box-sizing: border-box;
+}
+
+.toggle-checkbox:hover {
+  border-color: rgba(var(--fg-rgb), 0.5);
+}
+
+.toggle-checkbox.checked {
+  background: rgb(var(--fg-rgb));
+  border-color: rgb(var(--fg-rgb));
+}
+
+.toggle-checkbox .check-svg {
+  width: 14px;
+  height: 14px;
+  color: transparent;
+  transition: color 0.2s;
+}
+
+.toggle-checkbox.checked .check-svg {
+  color: rgb(var(--bg-rgb));
+}
+
+/* Expand chart toggle */
+.toggle-expand-chart {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s;
+}
+
+.toggle-expand-chart .expand-svg {
+  width: 16px;
+  height: 16px;
+  color: rgba(var(--fg-rgb), 0.4);
+  transition: color 0.2s;
+}
+
+.toggle-expand-chart:hover .expand-svg {
+  color: rgba(var(--fg-rgb), 0.7);
+}
+
+.toggle-expand-chart.active .expand-svg {
+  color: rgba(var(--fg-rgb), 0.8);
+}
+
+/* Hamburger (expand player list) */
 .hamburger-icon {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  cursor: pointer;
+  padding: 2px 0;
   transition: transform 0.2s;
 }
 

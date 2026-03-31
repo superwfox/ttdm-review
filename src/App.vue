@@ -185,7 +185,8 @@ function getPrimaryTitan(timeline) {
 }
 
 // Build segmented chart data — each segment colored by titan type
-function getChartData(timeline) {
+// perLife: when true, damage resets on each death and y1Max is per-life max
+function getChartData(timeline, perLife = false) {
   if (!timeline || !timeline.length) return null
 
   function adjustHealthChart(t) {
@@ -193,17 +194,58 @@ function getChartData(timeline) {
     return { hp, executed: hp === 0 && t.health > 0 }
   }
 
+  // Pre-compute life spans for per-life mode
+  let indexToLifeMaxDmg = null
+  if (perLife) {
+    const spans = []
+    let lifeStart = 0, dmg = 0
+    for (let i = 0; i < timeline.length; i++) {
+      const { hp } = adjustHealthChart(timeline[i])
+      if (hp === 0) {
+        spans.push({ start: lifeStart, end: i, totalDmg: dmg })
+        lifeStart = i + 1
+        dmg = 0
+      } else {
+        dmg += (timeline[i].delta_damage || 0)
+      }
+    }
+    spans.push({ start: lifeStart, end: timeline.length - 1, totalDmg: dmg })
+    indexToLifeMaxDmg = new Array(timeline.length)
+    for (const span of spans) {
+      for (let j = span.start; j <= span.end; j++) {
+        indexToLifeMaxDmg[j] = span.totalDmg
+      }
+    }
+  }
+
   const segments = []
-  let runDmg = 0
-  const first = adjustHealthChart(timeline[0])
-  runDmg += (timeline[0].delta_damage || 0)
-  let cur = { type: timeline[0].titan_type, points: [{ x: 0, y: first.hp, executed: first.executed, titanType: timeline[0].titan_type, sampleNum: timeline[0].sample_num, cumDeltaDmg: runDmg, deltaKills: timeline[0].delta_kills || 0 }] }
+  let runDmg = 0, lifeDmg = 0, maxLifeDmg = 0
+
+  function makePoint(t, i) {
+    const { hp, executed } = adjustHealthChart(t)
+    const delta = t.delta_damage || 0
+    runDmg += delta
+    if (perLife) {
+      if (hp === 0) lifeDmg = 0
+      else lifeDmg += delta
+      maxLifeDmg = Math.max(maxLifeDmg, lifeDmg)
+    }
+    const point = { x: i, y: hp, executed, titanType: t.titan_type, sampleNum: t.sample_num, deltaKills: t.delta_kills || 0 }
+    if (perLife) {
+      point.lifeDmg = lifeDmg
+      point.lifeMaxDmg = indexToLifeMaxDmg[i]
+    } else {
+      point.cumDeltaDmg = runDmg
+    }
+    return point
+  }
+
+  const firstPoint = makePoint(timeline[0], 0)
+  let cur = { type: timeline[0].titan_type, points: [firstPoint] }
 
   for (let i = 1; i < timeline.length; i++) {
     const t = timeline[i]
-    const { hp, executed } = adjustHealthChart(t)
-    runDmg += (t.delta_damage || 0)
-    const point = { x: i, y: hp, executed, titanType: t.titan_type, sampleNum: t.sample_num, cumDeltaDmg: runDmg, deltaKills: t.delta_kills || 0 }
+    const point = makePoint(t, i)
     if (t.titan_type !== cur.type) {
       cur.points.push(point)
       segments.push(cur)
@@ -216,55 +258,57 @@ function getChartData(timeline) {
 
   const datasets = segments.map(seg => {
     const color = getTitanColor(seg.type)
+    const hex = color
+    const r = parseInt(hex.slice(1, 3), 16) || 0
+    const g = parseInt(hex.slice(3, 5), 16) || 0
+    const b = parseInt(hex.slice(5, 7), 16) || 0
     return {
       data: seg.points,
       borderColor: color,
       borderWidth: 1.5,
       pointRadius: 0,
-      fill: {
-        target: 'origin',
-        above: color
-      },
+      fill: { target: 'origin', above: `rgba(${r},${g},${b},0.06)` },
       tension: 0.1,
       parsing: { xAxisKey: 'x', yAxisKey: 'y' },
       spanGaps: true
     }
   })
 
-  // For fill to work with hex colors, convert to rgba
-  for (const ds of datasets) {
-    const hex = ds.borderColor
-    const r = parseInt(hex.slice(1, 3), 16) || 0
-    const g = parseInt(hex.slice(3, 5), 16) || 0
-    const b = parseInt(hex.slice(5, 7), 16) || 0
-    ds.fill = { target: 'origin', above: `rgba(${r},${g},${b},0.06)` }
-  }
-
   const hasDelta = timeline.some(t => t.delta_damage > 0)
   let cumDmg = 0
   if (hasDelta) {
-    const dmgPoints = timeline.map((t, i) => { cumDmg += (t.delta_damage || 0); return { x: i, y: cumDmg } })
-    const killRadii = timeline.map(t => (t.delta_kills > 0 ? 4 : 0))
-    datasets.push({
-      data: dmgPoints,
-      borderColor: '#FF9ECF',
-      borderWidth: 1.5,
-      pointRadius: killRadii,
-      pointBackgroundColor: '#FF9ECF',
-      pointBorderColor: '#FF9ECF',
-      hoverRadius: 0,
-      fill: false,
-      tension: 0.1,
-      yAxisID: 'y1',
-      parsing: { xAxisKey: 'x', yAxisKey: 'y' },
-      spanGaps: true
-    })
+    if (perLife) {
+      let lDmg = 0
+      const dmgPoints = timeline.map((t, i) => {
+        const { hp } = adjustHealthChart(t)
+        if (hp === 0) lDmg = 0
+        else lDmg += (t.delta_damage || 0)
+        return { x: i, y: lDmg }
+      })
+      const killRadii = timeline.map(t => (t.delta_kills > 0 ? 4 : 0))
+      datasets.push({
+        data: dmgPoints, borderColor: '#FF9ECF', borderWidth: 1.5,
+        pointRadius: killRadii, pointBackgroundColor: '#FF9ECF', pointBorderColor: '#FF9ECF',
+        hoverRadius: 0, fill: false, tension: 0.1, yAxisID: 'y1',
+        parsing: { xAxisKey: 'x', yAxisKey: 'y' }, spanGaps: true
+      })
+    } else {
+      const dmgPoints = timeline.map((t, i) => { cumDmg += (t.delta_damage || 0); return { x: i, y: cumDmg } })
+      const killRadii = timeline.map(t => (t.delta_kills > 0 ? 4 : 0))
+      datasets.push({
+        data: dmgPoints, borderColor: '#FF9ECF', borderWidth: 1.5,
+        pointRadius: killRadii, pointBackgroundColor: '#FF9ECF', pointBorderColor: '#FF9ECF',
+        hoverRadius: 0, fill: false, tension: 0.1, yAxisID: 'y1',
+        parsing: { xAxisKey: 'x', yAxisKey: 'y' }, spanGaps: true
+      })
+    }
   }
 
   return {
     datasets,
-    y1Max: hasDelta ? Math.ceil(cumDmg / 0.75) : undefined,
-    totalPoints: timeline.length
+    y1Max: hasDelta ? (perLife ? Math.ceil(maxLifeDmg / 0.75) : Math.ceil(cumDmg / 0.75)) : undefined,
+    totalPoints: timeline.length,
+    perLife: !!perLife
   }
 }
 </script>
@@ -297,6 +341,7 @@ function getChartData(timeline) {
           :usedTitans="getUsedTitans(match.timeline)"
           :primaryTitan="getPrimaryTitan(match.timeline)"
           :chartData="getChartData(match.timeline)"
+          :chartDataPerLife="getChartData(match.timeline, true)"
           :titans="TITANS"
         />
       </div>
