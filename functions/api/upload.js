@@ -1,5 +1,5 @@
 function parseUploaderName(filename) {
-  const base = filename.replace(/\.(csv|bin|dat)$/i, '')
+  const base = filename.replace(/\.(csv|bin|dat|txt)$/i, '')
   // Match both HH-MM and HH-MM-SS timestamp formats
   const match = base.match(/^(.+)_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}(?:-\d{2})?_(players|timeline)$/i)
   return match ? match[1] : null
