@@ -318,7 +318,7 @@ function getChartData(timeline, perLife = false) {
     <ScanlineBackground />
 
     <div class="container">
-      <h1 class="title">T T D M</h1>
+      <h1 class="title">TTDM</h1>
 
       <SearchBar
         v-model="searchName"
@@ -398,8 +398,6 @@ function getChartData(timeline, perLife = false) {
   font-weight: 900;
   position: relative;
   z-index: 2;
-  text-align: justify;
-  text-align-last: justify;
 }
 
 .error {
