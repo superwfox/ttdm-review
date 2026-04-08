@@ -318,7 +318,7 @@ function getChartData(timeline, perLife = false) {
     <ScanlineBackground />
 
     <div class="container">
-      <h1 class="title">TTDM</h1>
+      <h1 class="title">  TTDM</h1>
 
       <SearchBar
         v-model="searchName"
