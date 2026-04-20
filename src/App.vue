@@ -6,15 +6,19 @@ import {
   PointElement,
   LinearScale,
   CategoryScale,
+  RadialLinearScale,
+  LineController,
+  RadarController,
   Filler,
   Tooltip
 } from 'chart.js'
 import ScanlineBackground from './components/ScanlineBackground.vue'
 import SearchBar from './components/SearchBar.vue'
 import MatchCard from './components/MatchCard.vue'
+import SummaryCard from './components/SummaryCard.vue'
 import NicknameModal from './components/NicknameModal.vue'
 
-ChartJS.register(LineElement, PointElement, LinearScale, CategoryScale, Filler, Tooltip)
+ChartJS.register(LineElement, PointElement, LinearScale, CategoryScale, RadialLinearScale, LineController, RadarController, Filler, Tooltip)
 
 // Titan type config
 // Banner images support multiple variants: titan_b.png, titan_b1.png, titan_b2.png, etc.
@@ -333,6 +337,14 @@ function getChartData(timeline, perLife = false) {
       </p>
 
       <div class="cards">
+        <SummaryCard
+          v-if="matches.length > 0"
+          :matches="matches"
+          :searchName="searchName.trim()"
+          :titans="TITANS"
+          :getPlayerStat="getPlayerStat"
+        />
+
         <MatchCard
           v-for="match in matches"
           :key="match.id"
