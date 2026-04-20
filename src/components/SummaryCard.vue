@@ -24,7 +24,9 @@ const hexData = computed(() => {
     }
   }
   const seconds = HEX_TITANS.map(t => counts[t] * 0.5)
+  const maxVal = Math.max(1, ...seconds)
   return {
+    _max: maxVal,
     labels: HEX_TITANS.map(t => props.titans[t]?.name || t),
     datasets: [{
       data: seconds,
@@ -52,7 +54,7 @@ const hexOptions = computed(() => ({
   },
   scales: {
     r: {
-      beginAtZero: true,
+      min: -hexData.value._max * 0.15,
       angleLines: { color: `rgba(${fgRgb},0.1)` },
       grid: { color: `rgba(${fgRgb},0.08)` },
       pointLabels: { color: `rgba(${fgRgb},0.7)`, font: { size: 11 } },
@@ -72,7 +74,7 @@ const lineStats = computed(() => {
       diff: (s.damage || 0) - (s.damageTaken || 0)
     })
   }
-  return arr
+  return arr.reverse()
 })
 
 function colorForDiff(d) {
