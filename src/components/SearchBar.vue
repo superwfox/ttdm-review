@@ -37,12 +37,11 @@ function onKeydown(e) {
   margin-bottom: 24px;
   padding: 26px 6px 6px 6px;
   position: relative;
-  background: rgba(var(--bg-rgb), 0.22);
-  -webkit-backdrop-filter: blur(18px);
-  backdrop-filter: blur(18px);
-  border: 1px solid rgba(var(--fg-rgb), 0.1);
+  background: rgb(var(--o-deep));
+  border: 1px solid rgba(var(--o-bright), 0.35);
   border-radius: 12px;
   overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
 }
 
 .search-input {
@@ -62,7 +61,7 @@ function onKeydown(e) {
 }
 
 .search-btn {
-  background: rgb(var(--fg-rgb));
+  background: rgb(var(--o-bright));
   color: rgb(var(--bg-rgb));
   border: none;
   border-radius: 8px;

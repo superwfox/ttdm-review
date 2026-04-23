@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { Radar, Line } from 'vue-chartjs'
+import { Bar, Line } from 'vue-chartjs'
 
 const props = defineProps({
   matches: { type: Array, required: true },
@@ -10,37 +10,42 @@ const props = defineProps({
 })
 
 const rootStyle = getComputedStyle(document.documentElement)
-const fgRgb = rootStyle.getPropertyValue('--fg-rgb').trim() || '255,255,255'
+const fgRgb = rootStyle.getPropertyValue('--fg-rgb').trim() || '255,236,212'
+const oBright = rootStyle.getPropertyValue('--o-bright').trim() || '255,140,48'
+const oDeep = rootStyle.getPropertyValue('--o-deep').trim() || '32,18,8'
 
-const HEX_TITANS = ['legion', 'ronin', 'northstar', 'scorch', 'tone', 'monarch', 'ion']
+const BAR_TITANS = ['legion', 'ronin', 'northstar', 'scorch', 'tone', 'monarch', 'ion']
 
-// Aggregate sample counts per titan across all loaded matches
-const hexData = computed(() => {
-  const counts = Object.fromEntries(HEX_TITANS.map(t => [t, 0]))
+// Three orange tones cycled across bars for variety
+const BAR_SHADES = [
+  '#ff8a32', // bright
+  '#ffb46b', // light
+  '#cc5a14'  // deep
+]
+
+// Aggregate sample counts per titan across all loaded matches (1 sample = 0.5s)
+const barData = computed(() => {
+  const counts = Object.fromEntries(BAR_TITANS.map(t => [t, 0]))
   for (const m of props.matches) {
     if (!m.timeline) continue
     for (const pt of m.timeline) {
       if (counts[pt.titan_type] !== undefined) counts[pt.titan_type]++
     }
   }
-  const seconds = HEX_TITANS.map(t => counts[t] * 0.5)
-  const maxVal = Math.max(1, ...seconds)
+  const seconds = BAR_TITANS.map(t => counts[t] * 0.5)
   return {
-    _max: maxVal,
-    labels: HEX_TITANS.map(t => props.titans[t]?.name || t),
+    labels: BAR_TITANS.map(t => props.titans[t]?.name || t),
     datasets: [{
       data: seconds,
-      backgroundColor: `rgba(${fgRgb},0.12)`,
-      borderColor: `rgba(${fgRgb},0.6)`,
-      borderWidth: 1.5,
-      pointBackgroundColor: HEX_TITANS.map(t => props.titans[t]?.color || '#fff'),
-      pointRadius: 3,
-      pointHoverRadius: 5
+      backgroundColor: BAR_TITANS.map((_, i) => BAR_SHADES[i % BAR_SHADES.length]),
+      borderRadius: 4,
+      borderSkipped: false,
+      maxBarThickness: 28
     }]
   }
 })
 
-const hexOptions = computed(() => ({
+const barOptions = computed(() => ({
   responsive: true,
   maintainAspectRatio: false,
   animation: false,
@@ -48,22 +53,26 @@ const hexOptions = computed(() => ({
     legend: { display: false },
     tooltip: {
       callbacks: {
-        label: ctx => `${ctx.label}: ${ctx.parsed.r.toFixed(1)}s`
+        label: ctx => `${ctx.parsed.y.toFixed(1)}s`
       }
     }
   },
   scales: {
-    r: {
-      min: -hexData.value._max * 0.15,
-      angleLines: { color: `rgba(${fgRgb},0.1)` },
-      grid: { color: `rgba(${fgRgb},0.08)` },
-      pointLabels: { color: `rgba(${fgRgb},0.7)`, font: { size: 11 } },
-      ticks: { display: false, backdropColor: 'transparent' }
+    x: {
+      ticks: { color: `rgba(${fgRgb},0.7)`, font: { size: 11 } },
+      grid: { display: false },
+      border: { color: `rgba(${oBright},0.3)` }
+    },
+    y: {
+      beginAtZero: true,
+      ticks: { color: `rgba(${fgRgb},0.45)`, font: { size: 10 } },
+      grid: { color: `rgba(${oBright},0.08)` },
+      border: { color: `rgba(${oBright},0.3)` }
     }
   }
 }))
 
-// Per-match avg line with diff-based segment coloring
+// Per-match stats, oldest → newest
 const lineStats = computed(() => {
   const arr = []
   for (const m of props.matches) {
@@ -77,10 +86,10 @@ const lineStats = computed(() => {
   return arr.reverse()
 })
 
-function colorForDiff(d) {
-  if (d > 5000) return '#9eff9e'
-  if (d < -5000) return '#ff5252'
-  return '#ffeb3b'
+function ratingForDiff(d) {
+  if (d > 5000) return { label: '较好', color: '#9eff9e' }
+  if (d < -5000) return { label: '糟糕', color: '#ff5252' }
+  return { label: '一般', color: '#ffeb3b' }
 }
 
 const lineData = computed(() => {
@@ -94,10 +103,10 @@ const lineData = computed(() => {
       tension: 0.25,
       pointRadius: 3,
       pointHoverRadius: 5,
-      pointBackgroundColor: stats.map(s => colorForDiff(s.diff)),
-      pointBorderColor: stats.map(s => colorForDiff(s.diff)),
+      pointBackgroundColor: stats.map(s => ratingForDiff(s.diff).color),
+      pointBorderColor: stats.map(s => ratingForDiff(s.diff).color),
       segment: {
-        borderColor: ctx => colorForDiff(stats[ctx.p1DataIndex]?.diff ?? 0)
+        borderColor: ctx => ratingForDiff(stats[ctx.p1DataIndex]?.diff ?? 0).color
       },
       fill: false
     }]
@@ -116,23 +125,24 @@ const lineOptions = computed(() => ({
         title: items => `第 ${items[0].label} 局`,
         label: ctx => {
           const s = lineStats.value[ctx.dataIndex]
+          const r = ratingForDiff(s.diff)
           const sign = s.diff >= 0 ? '+' : ''
-          return [`命均: ${s.avg}`, `差值: ${sign}${s.diff}`]
+          return [`命均: ${s.avg}`, `差值: ${sign}${s.diff} (${r.label})`]
         }
       }
     }
   },
   scales: {
     x: {
-      ticks: { color: `rgba(${fgRgb},0.35)`, font: { size: 10 } },
-      grid: { color: `rgba(${fgRgb},0.04)` },
-      border: { color: `rgba(${fgRgb},0.08)` }
+      ticks: { color: `rgba(${fgRgb},0.45)`, font: { size: 10 } },
+      grid: { color: `rgba(${oBright},0.06)` },
+      border: { color: `rgba(${oBright},0.3)` }
     },
     y: {
       beginAtZero: true,
-      ticks: { color: `rgba(${fgRgb},0.35)`, font: { size: 10 } },
-      grid: { color: `rgba(${fgRgb},0.04)` },
-      border: { color: `rgba(${fgRgb},0.08)` }
+      ticks: { color: `rgba(${fgRgb},0.45)`, font: { size: 10 } },
+      grid: { color: `rgba(${oBright},0.08)` },
+      border: { color: `rgba(${oBright},0.3)` }
     }
   }
 }))
@@ -141,10 +151,10 @@ const lineOptions = computed(() => ({
 <template>
   <div class="glass-card summary-card">
     <div class="summary-content">
-      <div class="summary-block hex-block">
+      <div class="summary-block bar-block">
         <div class="block-title">泰坦使用时长</div>
         <div class="chart-slot">
-          <Radar :data="hexData" :options="hexOptions" />
+          <Bar :data="barData" :options="barOptions" />
         </div>
       </div>
       <div class="summary-block line-block">
@@ -164,7 +174,7 @@ const lineOptions = computed(() => ({
 
 .summary-content {
   display: grid;
-  grid-template-columns: minmax(200px, 280px) 1fr;
+  grid-template-columns: minmax(220px, 300px) 1fr;
   gap: 20px;
   align-items: stretch;
 }
@@ -177,7 +187,7 @@ const lineOptions = computed(() => ({
 
 .block-title {
   font-size: 12px;
-  color: rgba(var(--fg-rgb), 0.4);
+  color: rgba(var(--fg-rgb), 0.55);
   letter-spacing: 1px;
   margin-bottom: 8px;
 }

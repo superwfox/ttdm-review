@@ -6,9 +6,9 @@ import {
   PointElement,
   LinearScale,
   CategoryScale,
-  RadialLinearScale,
+  BarElement,
+  BarController,
   LineController,
-  RadarController,
   Filler,
   Tooltip
 } from 'chart.js'
@@ -18,7 +18,7 @@ import MatchCard from './components/MatchCard.vue'
 import SummaryCard from './components/SummaryCard.vue'
 import NicknameModal from './components/NicknameModal.vue'
 
-ChartJS.register(LineElement, PointElement, LinearScale, CategoryScale, RadialLinearScale, LineController, RadarController, Filler, Tooltip)
+ChartJS.register(LineElement, PointElement, LinearScale, CategoryScale, BarElement, BarController, LineController, Filler, Tooltip)
 
 // Titan type config
 // Banner images support multiple variants: titan_b.png, titan_b1.png, titan_b2.png, etc.
@@ -385,14 +385,13 @@ function getChartData(timeline, perLife = false) {
   min-height: 100vh;
 }
 
-/* Glass card */
+/* Card — solid orange, three brightness levels used across the app */
 .glass-card {
-  background: rgba(var(--fg-rgb), 0.03);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(var(--fg-rgb), 0.08);
+  background: rgb(var(--o-mid));
+  border: 1px solid rgba(var(--o-bright), 0.35);
   border-radius: 12px;
   overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
 }
 
 /* Layout */
@@ -438,42 +437,28 @@ function getChartData(timeline, perLife = false) {
   margin-top: 24px;
 }
 
-.load-more-btn {
-  background: rgba(var(--fg-rgb), 0.06);
-  color: rgba(var(--fg-rgb), 0.6);
-  border: 1px solid rgba(var(--fg-rgb), 0.1);
+.load-more-btn,
+.nickname-edit-btn {
+  background: rgb(var(--o-mid));
+  color: rgb(var(--fg-rgb));
+  border: 1px solid rgba(var(--o-bright), 0.5);
   border-radius: 8px;
   padding: 12px 48px;
   font-size: 16px;
   font-family: inherit;
   cursor: pointer;
-  transition: background 0.2s, color 0.2s;
+  transition: background 0.2s, border-color 0.2s;
 }
 
-.load-more-btn:hover {
-  background: rgba(var(--fg-rgb), 0.1);
-  color: rgb(var(--fg-rgb));
+.load-more-btn:hover,
+.nickname-edit-btn:hover {
+  background: rgb(var(--o-bright));
+  color: rgb(var(--bg-rgb));
+  border-color: rgb(var(--o-bright));
 }
 
 .load-more-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
-}
-
-.nickname-edit-btn {
-  background: rgba(var(--fg-rgb), 0.06);
-  color: rgba(var(--fg-rgb), 0.6);
-  border: 1px solid rgba(var(--fg-rgb), 0.1);
-  border-radius: 8px;
-  padding: 12px 48px;
-  font-size: 16px;
-  font-family: inherit;
-  cursor: pointer;
-  transition: background 0.2s, color 0.2s;
-}
-
-.nickname-edit-btn:hover {
-  background: rgba(var(--fg-rgb), 0.1);
-  color: rgb(var(--fg-rgb));
 }
 </style>
