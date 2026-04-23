@@ -16,11 +16,11 @@ const oDeep = rootStyle.getPropertyValue('--o-deep').trim() || '32,18,8'
 
 const BAR_TITANS = ['legion', 'ronin', 'northstar', 'scorch', 'tone', 'monarch', 'ion']
 
-// Three orange tones cycled across bars for variety
+// Three palette tones cycled across bars for variety
 const BAR_SHADES = [
-  '#ff8a32', // bright
-  '#ffb46b', // light
-  '#cc5a14'  // deep
+  '#A27B5C', // accent
+  '#C9A27F', // lighter tint
+  '#7A5A40'  // deeper shade
 ]
 
 // Aggregate sample counts per titan across all loaded matches (1 sample = 0.5s)

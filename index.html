@@ -12,12 +12,12 @@
       }
       * { margin: 0; padding: 0; box-sizing: border-box; }
       :root {
-        --bg-rgb: 0,0,0;
-        --fg-rgb: 255,236,212;
-        /* Orange palette — three brightness levels */
-        --o-deep: 32,18,8;      /* darkest — inputs, deep wells */
-        --o-mid:  92,48,18;     /* card base */
-        --o-bright: 255,140,48; /* accent — buttons, highlights */
+        /* Palette — ordered by coverage area (largest → smallest) */
+        --bg-rgb: 44,54,57;     /* #2C3639 — page background */
+        --o-deep: 44,54,57;     /* #2C3639 — inset wells, inputs */
+        --o-mid:  63,78,79;     /* #3F4E4F — card base */
+        --o-bright: 162,123,92; /* #A27B5C — accent */
+        --fg-rgb: 220,215,201;  /* #DCD7C9 — text */
       }
       body {
         background: rgb(var(--bg-rgb));
