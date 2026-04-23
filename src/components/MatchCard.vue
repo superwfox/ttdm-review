@@ -482,14 +482,15 @@ const chartKey = computed(() =>
   z-index: 2;
 }
 
-/* Shared toggle button base — unified rounded rectangle */
+/* Shared toggle button base — off = dark bg (#2C3639), on = light bg (#DCD7C9) */
 .toggle-checkbox,
 .toggle-expand-chart,
 .hamburger-icon {
   width: 26px;
   height: 26px;
   border-radius: 6px;
-  border: 1.5px solid rgba(var(--fg-rgb), 0.2);
+  border: 1px solid rgba(var(--fg-rgb), 0.15);
+  background: rgb(var(--bg-rgb));
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -502,39 +503,38 @@ const chartKey = computed(() =>
 .toggle-expand-chart:hover,
 .hamburger-icon:hover {
   border-color: rgba(var(--fg-rgb), 0.4);
-  background: rgba(var(--fg-rgb), 0.06);
 }
 
-/* Active / checked state — filled background */
+/* Active / checked state — light fill */
 .toggle-checkbox.checked,
 .toggle-expand-chart.active,
 .hamburger-icon.active {
-  background: rgba(var(--fg-rgb), 0.15);
-  border-color: rgba(var(--fg-rgb), 0.4);
+  background: rgb(var(--fg-rgb));
+  border-color: rgb(var(--fg-rgb));
 }
 
 /* Per-life damage checkbox */
 .toggle-checkbox .check-svg {
   width: 14px;
   height: 14px;
-  color: rgba(var(--fg-rgb), 0.35);
+  color: rgba(var(--fg-rgb), 0.5);
   transition: color 0.2s;
 }
 
 .toggle-checkbox.checked .check-svg {
-  color: rgb(var(--fg-rgb));
+  color: rgb(var(--bg-rgb));
 }
 
 /* Expand chart toggle */
 .toggle-expand-chart .expand-svg {
   width: 14px;
   height: 14px;
-  color: rgba(var(--fg-rgb), 0.35);
+  color: rgba(var(--fg-rgb), 0.5);
   transition: color 0.2s;
 }
 
 .toggle-expand-chart.active .expand-svg {
-  color: rgb(var(--fg-rgb));
+  color: rgb(var(--bg-rgb));
 }
 
 /* Hamburger (expand player list) */
@@ -547,13 +547,13 @@ const chartKey = computed(() =>
   display: block;
   width: 14px;
   height: 1.5px;
-  background: rgba(var(--fg-rgb), 0.35);
+  background: rgba(var(--fg-rgb), 0.5);
   border-radius: 1px;
   transition: background 0.2s;
 }
 
 .hamburger-icon.active span {
-  background: rgb(var(--fg-rgb));
+  background: rgb(var(--bg-rgb));
 }
 
 /* Expand panel with animation */

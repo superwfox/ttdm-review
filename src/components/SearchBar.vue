@@ -61,7 +61,7 @@ function onKeydown(e) {
 }
 
 .search-btn {
-  background: rgb(var(--o-bright));
+  background: rgb(var(--fg-rgb));
   color: rgb(var(--bg-rgb));
   border: none;
   border-radius: 8px;

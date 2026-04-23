@@ -439,22 +439,20 @@ function getChartData(timeline, perLife = false) {
 
 .load-more-btn,
 .nickname-edit-btn {
-  background: rgb(var(--o-mid));
-  color: rgb(var(--fg-rgb));
-  border: 1px solid rgba(var(--o-bright), 0.5);
+  background: rgb(var(--fg-rgb));
+  color: rgb(var(--bg-rgb));
+  border: none;
   border-radius: 8px;
   padding: 12px 48px;
   font-size: 16px;
   font-family: inherit;
   cursor: pointer;
-  transition: background 0.2s, border-color 0.2s;
+  transition: opacity 0.2s;
 }
 
 .load-more-btn:hover,
 .nickname-edit-btn:hover {
-  background: rgb(var(--o-bright));
-  color: rgb(var(--bg-rgb));
-  border-color: rgb(var(--o-bright));
+  opacity: 0.85;
 }
 
 .load-more-btn:disabled {

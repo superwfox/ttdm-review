@@ -150,15 +150,14 @@ async function save() {
   transition: opacity 0.2s;
 }
 
-.nickname-btn.cancel {
-  background: rgb(var(--o-deep));
-  color: rgba(var(--fg-rgb), 0.7);
-  border: 1px solid rgba(var(--o-bright), 0.25);
+.nickname-btn.cancel,
+.nickname-btn.confirm {
+  background: rgb(var(--fg-rgb));
+  color: rgb(var(--bg-rgb));
 }
 
-.nickname-btn.confirm {
-  background: rgb(var(--o-bright));
-  color: rgb(var(--bg-rgb));
+.nickname-btn.cancel {
+  opacity: 0.6;
 }
 
 .nickname-btn:disabled {
