@@ -213,6 +213,10 @@ const chartKey = computed(() =>
 </script>
 
 <template>
+  <Teleport to="body" :disabled="!chartExpanded">
+    <div v-if="chartExpanded" class="expand-backdrop" @click="chartExpanded = false"></div>
+  </Teleport>
+  <Teleport to="body" :disabled="!chartExpanded">
   <div class="glass-card card" :class="{ 'chart-expanded': chartExpanded }">
     <!-- Banner background -->
     <div
@@ -328,21 +332,37 @@ const chartKey = computed(() =>
       </div>
     </div>
   </div>
+  </Teleport>
 </template>
 
 <style scoped>
 .card {
   position: relative;
-  transition:
-    margin 0.5s cubic-bezier(0.4, 0, 0.2, 1),
-    border-radius 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: border-radius 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Expanded card: stretch via equal negative margins, keep visible gap from edges */
+/* Expanded card: float to top layer as a modal, with dark blur backdrop */
 .card.chart-expanded {
-  margin-left: calc((100% - 100vw) / 2 + 16px);
-  margin-right: calc((100% - 100vw) / 2 + 16px);
-  border-radius: 8px;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) !important;
+  width: min(90vw, 1200px);
+  max-height: 90vh;
+  overflow-y: auto;
+  z-index: 100;
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.75);
+}
+
+/* Backdrop behind the expanded card */
+.expand-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 99;
 }
 
 .card-banner {
@@ -354,18 +374,18 @@ const chartKey = computed(() =>
   background-size: auto 100%;
   background-position: right top;
   background-repeat: no-repeat;
-  mask-image: linear-gradient(to left, rgba(0,0,0,0.25) 0%, transparent 60%);
-  -webkit-mask-image: linear-gradient(to left, rgba(0,0,0,0.25) 0%, transparent 60%);
+  /* Fade spans the full card width; blend-mode drops the black bg of the PNG */
+  mask-image: linear-gradient(to left, rgba(0,0,0,0.35) 0%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to left, rgba(0,0,0,0.35) 0%, transparent 100%);
+  mix-blend-mode: screen;
   pointer-events: none;
   border-radius: 12px;
-  transition: mask-image 0.5s, -webkit-mask-image 0.5s, border-radius 0.5s;
+  transition: mask-image 0.35s, -webkit-mask-image 0.35s, border-radius 0.35s;
 }
 
-/* When expanded: show more of the banner, only fade at left edge */
 .card.chart-expanded .card-banner {
-  mask-image: linear-gradient(to right, transparent 0%, rgba(0,0,0,0.25) 160px, rgba(0,0,0,0.25) 100%);
-  -webkit-mask-image: linear-gradient(to right, transparent 0%, rgba(0,0,0,0.25) 160px, rgba(0,0,0,0.25) 100%);
-  border-radius: 0;
+  mask-image: linear-gradient(to left, rgba(0,0,0,0.4) 0%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to left, rgba(0,0,0,0.4) 0%, transparent 100%);
 }
 
 .card-content {

@@ -466,11 +466,10 @@ watch(matches, () => nextTick(updateFocus), { deep: false })
   height: 100vh;
 }
 
-/* Left scroller */
+/* Left scroller — cards slide under the brand bar, blur handles the fade */
 .left-col {
   position: relative;
   height: 100vh;
-  padding-top: 110px;
   box-sizing: border-box;
 }
 
@@ -480,18 +479,17 @@ watch(matches, () => nextTick(updateFocus), { deep: false })
   scroll-snap-type: y mandatory;
   scroll-snap-stop: always;
   padding: 0 28px 40vh 28px;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(var(--fg-rgb), 0.15) transparent;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
+
+.scroller::-webkit-scrollbar { display: none; width: 0; height: 0; }
 
 .scroller::before {
   content: '';
   display: block;
   height: 28vh;
 }
-
-.scroller::-webkit-scrollbar { width: 6px; }
-.scroller::-webkit-scrollbar-thumb { background: rgba(var(--fg-rgb), 0.15); border-radius: 3px; }
 
 .slot {
   --card-scale: 0.75;

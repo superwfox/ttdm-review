@@ -1,10 +1,21 @@
 <script setup>
+import { ref, computed } from 'vue'
+
 const props = defineProps({
   modelValue: { type: String, default: '' },
   loading: { type: Boolean, default: false }
 })
 
 const emit = defineEmits(['update:modelValue', 'search'])
+
+const measureRef = ref(null)
+
+// Measure text width to drive underline width; min = placeholder width
+const textWidth = computed(() => {
+  const el = measureRef.value
+  if (!el) return 140
+  return Math.max(140, el.offsetWidth + 24)
+})
 
 function onInput(e) {
   emit('update:modelValue', e.target.value)
@@ -16,7 +27,8 @@ function onKeydown(e) {
 </script>
 
 <template>
-  <div class="search-line" :class="{ focused: !!modelValue }">
+  <div class="search-line">
+    <span ref="measureRef" class="measure" aria-hidden="true">{{ modelValue || '输入名称' }}</span>
     <input
       :value="modelValue"
       @input="onInput"
@@ -27,7 +39,7 @@ function onKeydown(e) {
     />
     <span v-if="!modelValue && !loading" class="placeholder">输入名称</span>
     <span v-else-if="loading" class="placeholder loading">查询中…</span>
-    <div class="underline"></div>
+    <div class="underline" :style="{ width: textWidth + 'px' }"></div>
   </div>
 </template>
 
@@ -35,7 +47,8 @@ function onKeydown(e) {
 .search-line {
   position: relative;
   width: 100%;
-  padding: 6px 2px 10px 2px;
+  padding: 10px 4px 14px 4px;
+  text-align: right;
 }
 
 .search-input {
@@ -45,20 +58,32 @@ function onKeydown(e) {
   outline: none;
   color: rgb(var(--fg-rgb));
   font-family: inherit;
-  font-size: 18px;
-  padding: 0 2px;
-  letter-spacing: 2px;
+  font-size: 30px;
+  padding: 0 4px;
+  letter-spacing: 3px;
+  text-align: right;
+}
+
+/* Hidden mirror span that gives us the pixel width of the current text */
+.measure {
+  position: absolute;
+  visibility: hidden;
+  white-space: pre;
+  pointer-events: none;
+  font-size: 30px;
+  letter-spacing: 3px;
+  padding: 0 4px;
+  font-family: inherit;
 }
 
 .placeholder {
   position: absolute;
-  top: 50%;
-  left: 4px;
-  transform: translateY(-56%);
+  bottom: 18px;
+  right: 8px;
   pointer-events: none;
   color: rgba(var(--fg-rgb), 0.35);
-  font-size: 16px;
-  letter-spacing: 2px;
+  font-size: 28px;
+  letter-spacing: 3px;
   animation: blink 2.5s ease-in-out infinite;
 }
 
@@ -71,17 +96,16 @@ function onKeydown(e) {
   50%       { opacity: 0.75; }
 }
 
+/* Underline anchored to the right — width follows text length, so it grows leftward */
 .underline {
   position: absolute;
-  left: 0;
   right: 0;
   bottom: 0;
   height: 1px;
-  background: rgba(var(--fg-rgb), 0.35);
-  transition: background 0.25s;
+  background: rgba(var(--fg-rgb), 0.55);
+  transition: width 0.25s cubic-bezier(.4,0,.2,1), background 0.25s;
 }
 
-.search-line.focused .underline,
 .search-input:focus ~ .underline {
   background: rgb(var(--fg-rgb));
 }

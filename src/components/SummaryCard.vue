@@ -173,10 +173,9 @@ const lineOptions = computed(() => ({
 }
 
 .summary-content {
-  display: grid;
-  grid-template-columns: minmax(220px, 300px) 1fr;
-  gap: 20px;
-  align-items: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .summary-block {
@@ -199,9 +198,6 @@ const lineOptions = computed(() => ({
 }
 
 @media (max-width: 640px) {
-  .summary-content {
-    grid-template-columns: 1fr;
-  }
   .chart-slot {
     height: 180px;
   }

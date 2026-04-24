@@ -24,14 +24,14 @@ let rafId = 0
 let activeTitan = null
 let resizeObs = null
 
-function pngPts(normPts, srcAspect) {
+function pngPts(normPts, srcAspect, fit) {
   const canvasAspect = W / H
   let drawW, drawH
   if (canvasAspect > srcAspect) {
-    drawH = H * 0.82
+    drawH = H * fit
     drawW = drawH * srcAspect
   } else {
-    drawW = W * 0.88
+    drawW = W * fit
     drawH = drawW / srcAspect
   }
   const ox = (W - drawW) / 2
@@ -42,8 +42,8 @@ function pngPts(normPts, srcAspect) {
 function buildShapes(titan) {
   const entry = dotsData[titan] || dotsData.legion
   shapes = [
-    pngPts(entry.s.pts, entry.s.w / entry.s.h),
-    pngPts(entry.b.pts, entry.b.w / entry.b.h)
+    pngPts(entry.s.pts, entry.s.w / entry.s.h, 0.78),
+    pngPts(entry.b.pts, entry.b.w / entry.b.h, 0.98)
   ]
 }
 
@@ -55,13 +55,13 @@ function initParticles(n) {
       phX1: Math.random() * Math.PI * 2, phY1: Math.random() * Math.PI * 2,
       spX1: 0.18 + Math.random() * 0.22,
       spY1: 0.18 + Math.random() * 0.22,
-      amX1: 0.8 + Math.random() * 2.5,
-      amY1: 0.8 + Math.random() * 2.5,
+      amX1: (0.8 + Math.random() * 2.5) * 3,
+      amY1: (0.8 + Math.random() * 2.5) * 3,
       phX2: Math.random() * Math.PI * 2, phY2: Math.random() * Math.PI * 2,
       spX2: 0.55 + Math.random() * 0.55,
       spY2: 0.55 + Math.random() * 0.55,
-      amX2: 0.25 + Math.random() * 0.8,
-      amY2: 0.25 + Math.random() * 0.8,
+      amX2: (0.25 + Math.random() * 0.8) * 3,
+      amY2: (0.25 + Math.random() * 0.8) * 3,
       phA: Math.random() * Math.PI * 2,
       spA: 0.25 + Math.random() * 0.35
     })
