@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import {
   Chart as ChartJS,
   LineElement,
@@ -13,16 +13,15 @@ import {
   Tooltip
 } from 'chart.js'
 import ScanlineBackground from './components/ScanlineBackground.vue'
-import SearchBar from './components/SearchBar.vue'
+import BrandLabel from './components/BrandLabel.vue'
+import DotMatrix from './components/DotMatrix.vue'
+import SearchLine from './components/SearchLine.vue'
 import MatchCard from './components/MatchCard.vue'
 import SummaryCard from './components/SummaryCard.vue'
 import NicknameModal from './components/NicknameModal.vue'
 
 ChartJS.register(LineElement, PointElement, LinearScale, CategoryScale, BarElement, BarController, LineController, Filler, Tooltip)
 
-// Titan type config
-// Banner images support multiple variants: titan_b.png, titan_b1.png, titan_b2.png, etc.
-// Add new banner images to public/titans/ following the naming pattern, then add paths to the banners array.
 const TITANS = {
   legion:    { name: '军团',   color: '#00e5ff', icon: '/titans/legion_s.png',    banners: ['/titans/legion_b.png'] },
   ronin:     { name: '浪人',   color: '#ffd600', icon: '/titans/ronin_s.png',     banners: ['/titans/ronin_b.png'] },
@@ -47,11 +46,31 @@ const error = ref('')
 const searched = ref(false)
 const hasMore = ref(false)
 
-// Nickname system
 const showNicknameModal = ref(false)
 const nicknamePlayerName = ref('')
 const currentNickname = ref('')
 const hasNicknameRecord = ref(false)
+
+const scrollerRef = ref(null)
+
+// Most-used titan across all loaded matches — drives DotMatrix on the right
+const dominantTitan = computed(() => {
+  const counts = {}
+  for (const m of matches.value) {
+    if (!m.timeline) continue
+    for (const t of m.timeline) {
+      const tt = t.titan_type
+      if (tt && tt !== 'pilot' && tt !== 'unknown') {
+        counts[tt] = (counts[tt] || 0) + 1
+      }
+    }
+  }
+  let max = 0, top = 'legion'
+  for (const [k, v] of Object.entries(counts)) {
+    if (v > max) { max = v; top = k }
+  }
+  return top
+})
 
 onMounted(async () => {
   try {
@@ -60,11 +79,10 @@ onMounted(async () => {
     if (data.ok && data.has_record) {
       nicknamePlayerName.value = data.player_name
       hasNicknameRecord.value = true
-      if (!data.has_nickname) {
-        showNicknameModal.value = true
-      } else {
-        currentNickname.value = data.nickname
-      }
+      searchName.value = data.player_name
+      if (data.has_nickname) currentNickname.value = data.nickname
+      else showNicknameModal.value = true
+      await search()
     }
   } catch {}
 })
@@ -97,7 +115,6 @@ async function search() {
     }
     matches.value = data.matches
     hasMore.value = data.has_more
-    // Handle nickname redirect
     if (data.redirected_from && data.actual_name) {
       searchName.value = data.actual_name
     }
@@ -105,6 +122,7 @@ async function search() {
     error.value = e.message
   } finally {
     loading.value = false
+    nextTick(updateFocus)
   }
 }
 
@@ -127,6 +145,7 @@ async function loadMore() {
     error.value = e.message
   } finally {
     loadingMore.value = false
+    nextTick(updateFocus)
   }
 }
 
@@ -145,9 +164,7 @@ function calcDamageTaken(timeline) {
   for (let i = 1; i < timeline.length; i++) {
     const prev = adjustHealth(timeline[i - 1])
     const curr = adjustHealth(timeline[i])
-    if (curr < prev) {
-      total += prev - curr
-    }
+    if (curr < prev) total += prev - curr
   }
   return total
 }
@@ -160,7 +177,6 @@ function getPlayerStat(match, name) {
   return { ...p, avg, damageTaken }
 }
 
-// Extract unique titan types used in a timeline (excluding pilot/unknown)
 function getUsedTitans(timeline) {
   if (!timeline || !timeline.length) return []
   const types = new Set()
@@ -171,7 +187,6 @@ function getUsedTitans(timeline) {
   return [...types]
 }
 
-// Get the primary titan (most samples) for banner background
 function getPrimaryTitan(timeline) {
   if (!timeline || !timeline.length) return null
   const counts = {}
@@ -188,8 +203,6 @@ function getPrimaryTitan(timeline) {
   return primary
 }
 
-// Build segmented chart data — each segment colored by titan type
-// perLife: when true, damage resets on each death and y1Max is per-life max
 function getChartData(timeline, perLife = false) {
   if (!timeline || !timeline.length) return null
 
@@ -198,7 +211,6 @@ function getChartData(timeline, perLife = false) {
     return { hp, executed: hp === 0 && t.health > 0 }
   }
 
-  // Pre-compute life spans for per-life mode
   let indexToLifeMaxDmg = null
   if (perLife) {
     const spans = []
@@ -262,10 +274,9 @@ function getChartData(timeline, perLife = false) {
 
   const datasets = segments.map(seg => {
     const color = getTitanColor(seg.type)
-    const hex = color
-    const r = parseInt(hex.slice(1, 3), 16) || 0
-    const g = parseInt(hex.slice(3, 5), 16) || 0
-    const b = parseInt(hex.slice(5, 7), 16) || 0
+    const r = parseInt(color.slice(1, 3), 16) || 0
+    const g = parseInt(color.slice(3, 5), 16) || 0
+    const b = parseInt(color.slice(5, 7), 16) || 0
     return {
       data: seg.points,
       borderColor: color,
@@ -315,58 +326,109 @@ function getChartData(timeline, perLife = false) {
     perLife: !!perLife
   }
 }
+
+// Scroller focus — compute scale/opacity per slot based on distance to viewport center
+let rafPending = false
+function updateFocus() {
+  const scroller = scrollerRef.value
+  if (!scroller) return
+  if (rafPending) return
+  rafPending = true
+  requestAnimationFrame(() => {
+    rafPending = false
+    const viewMid = scroller.scrollTop + scroller.clientHeight / 2
+    const slots = scroller.querySelectorAll('.slot')
+    for (const s of slots) {
+      const off = s.offsetTop + s.offsetHeight / 2
+      const d = Math.abs(off - viewMid) / s.offsetHeight
+      const scale = Math.max(0.7, 1 - d * 0.22).toFixed(3)
+      const opacity = Math.max(0.35, 1 - d * 0.55).toFixed(3)
+      s.style.setProperty('--card-scale', scale)
+      s.style.setProperty('--card-opacity', opacity)
+    }
+  })
+}
+
+function onScroll() { updateFocus() }
+function onResize() { updateFocus() }
+
+onMounted(() => {
+  window.addEventListener('resize', onResize)
+  nextTick(updateFocus)
+})
+onUnmounted(() => {
+  window.removeEventListener('resize', onResize)
+})
+
+watch(matches, () => nextTick(updateFocus), { deep: false })
 </script>
 
 <template>
   <div class="app-root">
     <ScanlineBackground />
+    <BrandLabel />
 
-    <div class="container">
-      <h1 class="title">  TTDM</h1>
+    <main class="layout">
+      <!-- Left region — scroller -->
+      <section class="left-col">
+        <div
+          ref="scrollerRef"
+          class="scroller"
+          @scroll.passive="onScroll"
+        >
+          <div v-if="matches.length > 0" class="slot">
+            <SummaryCard
+              :matches="matches"
+              :searchName="searchName.trim()"
+              :titans="TITANS"
+              :getPlayerStat="getPlayerStat"
+            />
+          </div>
 
-      <SearchBar
-        v-model="searchName"
-        :loading="loading"
-        @search="search"
-      />
+          <div
+            v-for="match in matches"
+            :key="match.id"
+            class="slot"
+          >
+            <MatchCard
+              :match="match"
+              :playerStat="getPlayerStat(match, searchName.trim())"
+              :usedTitans="getUsedTitans(match.timeline)"
+              :primaryTitan="getPrimaryTitan(match.timeline)"
+              :chartData="getChartData(match.timeline)"
+              :chartDataPerLife="getChartData(match.timeline, true)"
+              :titans="TITANS"
+            />
+          </div>
 
-      <p v-if="error" class="error">{{ error }}</p>
+          <p v-if="!loading && searched && matches.length === 0" class="empty">无数据</p>
+          <p v-if="error" class="error">{{ error }}</p>
 
-      <p v-if="!loading && searched && matches.length === 0" class="empty">
-        无数据
-      </p>
+          <div v-if="hasMore || hasNicknameRecord" class="footer-actions">
+            <button v-if="hasMore" class="load-more-btn" :disabled="loadingMore" @click="loadMore">
+              {{ loadingMore ? '...' : '加载更多' }}
+            </button>
+            <button v-if="hasNicknameRecord" class="nickname-edit-btn" @click="openNicknameModal">
+              {{ currentNickname ? '修改别名' : '设置别名' }}
+            </button>
+          </div>
+        </div>
+      </section>
 
-      <div class="cards">
-        <SummaryCard
-          v-if="matches.length > 0"
-          :matches="matches"
-          :searchName="searchName.trim()"
-          :titans="TITANS"
-          :getPlayerStat="getPlayerStat"
-        />
-
-        <MatchCard
-          v-for="match in matches"
-          :key="match.id"
-          :match="match"
-          :playerStat="getPlayerStat(match, searchName.trim())"
-          :usedTitans="getUsedTitans(match.timeline)"
-          :primaryTitan="getPrimaryTitan(match.timeline)"
-          :chartData="getChartData(match.timeline)"
-          :chartDataPerLife="getChartData(match.timeline, true)"
-          :titans="TITANS"
-        />
-      </div>
-
-      <div v-if="hasMore || hasNicknameRecord" class="load-more-wrap">
-        <button v-if="hasMore" class="load-more-btn" :disabled="loadingMore" @click="loadMore">
-          {{ loadingMore ? '...' : '加载更多' }}
-        </button>
-        <button v-if="hasNicknameRecord" class="nickname-edit-btn" @click="openNicknameModal">
-          {{ currentNickname ? '修改别名' : '设置别名' }}
-        </button>
-      </div>
-    </div>
+      <!-- Right region — fixed dot matrix + search line -->
+      <aside class="right-col">
+        <div class="dot-wrap">
+          <DotMatrix :titanType="dominantTitan" />
+        </div>
+        <div class="search-wrap">
+          <SearchLine
+            v-model="searchName"
+            :loading="loading"
+            @search="search"
+          />
+        </div>
+      </aside>
+    </main>
 
     <NicknameModal
       v-if="showNicknameModal"
@@ -379,13 +441,14 @@ function getChartData(timeline, perLife = false) {
 </template>
 
 <style>
-/* Root wrapper */
 .app-root {
   position: relative;
-  min-height: 100vh;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
 }
 
-/* Card — solid orange, three brightness levels used across the app */
+/* Solid card base */
 .glass-card {
   background: rgb(var(--o-mid));
   border: 1px solid rgba(var(--o-bright), 0.35);
@@ -394,47 +457,72 @@ function getChartData(timeline, perLife = false) {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
 }
 
-/* Layout */
-.container {
+.layout {
   position: relative;
   z-index: 1;
-  max-width: 720px;
-  margin: 0 auto;
-  padding: 40px 20px;
+  display: grid;
+  grid-template-columns: minmax(380px, 44%) 1fr;
+  width: 100%;
+  height: 100vh;
 }
 
-.title {
-  font-size: 48px;
-  margin-bottom: -20px;
-  font-weight: 900;
+/* Left scroller */
+.left-col {
   position: relative;
-  z-index: 2;
+  height: 100vh;
+  padding-top: 110px;
+  box-sizing: border-box;
+}
+
+.scroller {
+  height: 100%;
+  overflow-y: auto;
+  scroll-snap-type: y mandatory;
+  scroll-snap-stop: always;
+  padding: 0 28px 40vh 28px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(var(--fg-rgb), 0.15) transparent;
+}
+
+.scroller::before {
+  content: '';
+  display: block;
+  height: 28vh;
+}
+
+.scroller::-webkit-scrollbar { width: 6px; }
+.scroller::-webkit-scrollbar-thumb { background: rgba(var(--fg-rgb), 0.15); border-radius: 3px; }
+
+.slot {
+  --card-scale: 0.75;
+  --card-opacity: 0.4;
+  scroll-snap-align: center;
+  padding: 12px 0;
+  transform: scale(var(--card-scale));
+  opacity: var(--card-opacity);
+  transform-origin: center center;
+  transition: transform 0.35s cubic-bezier(.5,0,.2,1), opacity 0.35s cubic-bezier(.5,0,.2,1);
+  will-change: transform, opacity;
 }
 
 .error {
   color: #f44;
-  margin-bottom: 16px;
+  text-align: center;
+  margin-top: 16px;
 }
 
 .empty {
-  color: rgba(var(--fg-rgb), 0.27);
+  color: rgba(var(--fg-rgb), 0.4);
   text-align: center;
   margin-top: 40px;
 }
 
-/* Cards */
-.cards {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-/* Load more */
-.load-more-wrap {
+.footer-actions {
   display: flex;
   justify-content: center;
   gap: 12px;
   margin-top: 24px;
+  padding-bottom: 12px;
 }
 
 .load-more-btn,
@@ -443,20 +531,46 @@ function getChartData(timeline, perLife = false) {
   color: rgb(var(--bg-rgb));
   border: none;
   border-radius: 8px;
-  padding: 12px 48px;
-  font-size: 16px;
+  padding: 10px 36px;
+  font-size: 14px;
   font-family: inherit;
   cursor: pointer;
   transition: opacity 0.2s;
 }
 
 .load-more-btn:hover,
-.nickname-edit-btn:hover {
-  opacity: 0.85;
+.nickname-edit-btn:hover { opacity: 0.85; }
+.load-more-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Right column — dot matrix + search line */
+.right-col {
+  position: relative;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 24px 36px 24px 12px;
+  box-sizing: border-box;
 }
 
-.load-more-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
+.dot-wrap {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+
+.search-wrap {
+  flex-shrink: 0;
+  padding-top: 12px;
+}
+
+/* Responsive — stack on narrow viewports */
+@media (max-width: 900px) {
+  .app-root { height: auto; overflow: auto; }
+  .layout { grid-template-columns: 1fr; height: auto; }
+  .left-col { height: auto; padding-top: 100px; }
+  .scroller { height: auto; overflow-y: visible; scroll-snap-type: none; padding-bottom: 24px; }
+  .scroller::before { display: none; }
+  .slot { transform: none; opacity: 1; }
+  .right-col { height: 60vh; padding: 12px 20px 20px 20px; }
 }
 </style>
