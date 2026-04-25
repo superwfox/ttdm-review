@@ -140,8 +140,8 @@ function onKeydown(e) {
 
 .greeting {
   margin-top: 8px;
-  font-size: 13px;
-  letter-spacing: 2px;
+  font-size: 30px;
+  letter-spacing: 3px;
   color: rgba(var(--fg-rgb), 0.55);
   text-align: right;
   padding-right: 4px;
