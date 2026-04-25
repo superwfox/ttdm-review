@@ -57,28 +57,34 @@ function onKeydown(e) {
 
 <template>
   <div class="search-line">
-    <span ref="measureRef" class="measure" aria-hidden="true">{{ modelValue || '输入名称' }}</span>
-    <input
-      :value="modelValue"
-      @input="onInput"
-      @keydown="onKeydown"
-      class="search-input"
-      autocomplete="off"
-      spellcheck="false"
-    />
-    <span v-if="!modelValue && !loading" class="placeholder">输入名称</span>
-    <span v-else-if="loading" class="placeholder loading">查询中…</span>
-    <div class="underline" :style="{ width: textWidth + 'px' }"></div>
+    <div class="input-row">
+      <span ref="measureRef" class="measure" aria-hidden="true">{{ modelValue || '输入名称' }}</span>
+      <input
+        :value="modelValue"
+        @input="onInput"
+        @keydown="onKeydown"
+        class="search-input"
+        autocomplete="off"
+        spellcheck="false"
+      />
+      <span v-if="!modelValue && !loading" class="placeholder">输入名称</span>
+      <span v-else-if="loading" class="placeholder loading">查询中…</span>
+      <div class="underline" :style="{ width: textWidth + 'px' }"></div>
+    </div>
     <div v-if="greeting" class="greeting">{{ greeting }}</div>
   </div>
 </template>
 
 <style scoped>
 .search-line {
-  position: relative;
   width: 100%;
   padding: 10px 4px 14px 4px;
   text-align: right;
+}
+
+.input-row {
+  position: relative;
+  padding-bottom: 8px;
 }
 
 .search-input {
@@ -107,7 +113,7 @@ function onKeydown(e) {
 
 .placeholder {
   position: absolute;
-  bottom: 18px;
+  bottom: 10px;
   right: 8px;
   pointer-events: none;
   color: rgba(var(--fg-rgb), 0.35);
@@ -128,7 +134,7 @@ function onKeydown(e) {
 .underline {
   position: absolute;
   right: 0;
-  bottom: 30px;
+  bottom: 0;
   height: 1px;
   background: rgba(var(--fg-rgb), 0.55);
   transition: width 0.25s cubic-bezier(.4,0,.2,1), background 0.25s;
