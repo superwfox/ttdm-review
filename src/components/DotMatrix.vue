@@ -55,13 +55,13 @@ function initParticles(n) {
       phX1: Math.random() * Math.PI * 2, phY1: Math.random() * Math.PI * 2,
       spX1: 0.18 + Math.random() * 0.22,
       spY1: 0.18 + Math.random() * 0.22,
-      amX1: (0.8 + Math.random() * 2.5) * 3,
-      amY1: (0.8 + Math.random() * 2.5) * 3,
+      amX1: (0.8 + Math.random() * 2.5) * 1.5,
+      amY1: (0.8 + Math.random() * 2.5) * 1.5,
       phX2: Math.random() * Math.PI * 2, phY2: Math.random() * Math.PI * 2,
       spX2: 0.55 + Math.random() * 0.55,
       spY2: 0.55 + Math.random() * 0.55,
-      amX2: (0.25 + Math.random() * 0.8) * 3,
-      amY2: (0.25 + Math.random() * 0.8) * 3,
+      amX2: (0.25 + Math.random() * 0.8) * 1.5,
+      amY2: (0.25 + Math.random() * 0.8) * 1.5,
       phA: Math.random() * Math.PI * 2,
       spA: 0.25 + Math.random() * 0.35
     })

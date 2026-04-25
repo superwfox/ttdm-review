@@ -424,6 +424,7 @@ watch(matches, () => nextTick(updateFocus), { deep: false })
           <SearchLine
             v-model="searchName"
             :loading="loading"
+            :titanName="matches.length > 0 ? (TITANS[dominantTitan]?.name || '') : ''"
             @search="search"
           />
         </div>

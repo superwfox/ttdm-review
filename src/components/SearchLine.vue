@@ -1,16 +1,45 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 
 const props = defineProps({
   modelValue: { type: String, default: '' },
-  loading: { type: Boolean, default: false }
+  loading: { type: Boolean, default: false },
+  titanName: { type: String, default: '' }
 })
 
 const emit = defineEmits(['update:modelValue', 'search'])
 
 const measureRef = ref(null)
+const honorific = ref('大佬')
+const now = ref(new Date())
 
-// Measure text width to drive underline width; min = placeholder width
+const HONORIFICS = ['大佬', '高手', '大手子', '大人']
+
+onMounted(() => {
+  honorific.value = HONORIFICS[Math.floor(Math.random() * HONORIFICS.length)]
+  // Refresh greeting every minute so the phrase changes when the hour rolls over
+  setInterval(() => { now.value = new Date() }, 60_000)
+})
+
+function greetingByHour(h) {
+  if (h >= 5 && h < 8)   return '早上好'
+  if (h >= 8 && h < 11)  return '上午好'
+  if (h >= 11 && h < 13) return '中午好'
+  if (h >= 13 && h < 16) return '下午好'
+  if (h >= 16 && h < 18) return '已经是傍晚'
+  if (h >= 18 && h < 19) return '现在是晚饭时间'
+  if (h >= 19 && h < 22) return '晚上好'
+  if (h >= 22 && h < 24) return '时间不早了'
+  if (h >= 0 && h < 3)   return '已经是深夜'
+  return '凌晨了'
+}
+
+const greeting = computed(() => {
+  if (!props.titanName) return ''
+  const g = greetingByHour(now.value.getHours())
+  return `${g},${props.titanName}${honorific.value}`
+})
+
 const textWidth = computed(() => {
   const el = measureRef.value
   if (!el) return 140
@@ -40,6 +69,7 @@ function onKeydown(e) {
     <span v-if="!modelValue && !loading" class="placeholder">输入名称</span>
     <span v-else-if="loading" class="placeholder loading">查询中…</span>
     <div class="underline" :style="{ width: textWidth + 'px' }"></div>
+    <div v-if="greeting" class="greeting">{{ greeting }}</div>
   </div>
 </template>
 
@@ -64,7 +94,6 @@ function onKeydown(e) {
   text-align: right;
 }
 
-/* Hidden mirror span that gives us the pixel width of the current text */
 .measure {
   position: absolute;
   visibility: hidden;
@@ -96,11 +125,10 @@ function onKeydown(e) {
   50%       { opacity: 0.75; }
 }
 
-/* Underline anchored to the right — width follows text length, so it grows leftward */
 .underline {
   position: absolute;
   right: 0;
-  bottom: 0;
+  bottom: 30px;
   height: 1px;
   background: rgba(var(--fg-rgb), 0.55);
   transition: width 0.25s cubic-bezier(.4,0,.2,1), background 0.25s;
@@ -108,5 +136,14 @@ function onKeydown(e) {
 
 .search-input:focus ~ .underline {
   background: rgb(var(--fg-rgb));
+}
+
+.greeting {
+  margin-top: 8px;
+  font-size: 13px;
+  letter-spacing: 2px;
+  color: rgba(var(--fg-rgb), 0.55);
+  text-align: right;
+  padding-right: 4px;
 }
 </style>
