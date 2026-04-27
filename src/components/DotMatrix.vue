@@ -42,7 +42,7 @@ function pngPts(normPts, srcAspect, fit) {
 function buildShapes(titan) {
   const entry = dotsData[titan] || dotsData.legion
   shapes = [
-    pngPts(entry.s.pts, entry.s.w / entry.s.h, 0.78),
+    pngPts(entry.s.pts, entry.s.w / entry.s.h, 0.98),
     pngPts(entry.b.pts, entry.b.w / entry.b.h, 0.98)
   ]
 }
