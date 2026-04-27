@@ -21,6 +21,7 @@ import SummaryCard from './components/SummaryCard.vue'
 import NicknameModal from './components/NicknameModal.vue'
 
 ChartJS.register(LineElement, PointElement, LinearScale, CategoryScale, BarElement, BarController, LineController, Filler, Tooltip)
+ChartJS.defaults.font.family = "'ZhuoKai', sans-serif"
 
 const TITANS = {
   legion:    { name: '軍團',   color: '#00e5ff', icon: '/titans/legion_s.png',    banners: ['/titans/legion_b.png'] },
@@ -116,7 +117,9 @@ async function search() {
     matches.value = data.matches
     hasMore.value = data.has_more
     if (data.redirected_from && data.actual_name) {
-      searchName.value = data.actual_name
+      searchName.value = data.actual_name.toUpperCase()
+    } else {
+      searchName.value = name.toUpperCase()
     }
   } catch (e) {
     error.value = e.message
