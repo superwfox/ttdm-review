@@ -23,14 +23,14 @@ import NicknameModal from './components/NicknameModal.vue'
 ChartJS.register(LineElement, PointElement, LinearScale, CategoryScale, BarElement, BarController, LineController, Filler, Tooltip)
 
 const TITANS = {
-  legion:    { name: '军团',   color: '#00e5ff', icon: '/titans/legion_s.png',    banners: ['/titans/legion_b.png'] },
+  legion:    { name: '軍團',   color: '#00e5ff', icon: '/titans/legion_s.png',    banners: ['/titans/legion_b.png'] },
   ronin:     { name: '浪人',   color: '#ffd600', icon: '/titans/ronin_s.png',     banners: ['/titans/ronin_b.png'] },
-  northstar: { name: '北极星', color: '#448aff', icon: '/titans/northstar_s.png', banners: ['/titans/northstar_b.png'] },
+  northstar: { name: '北極星', color: '#448aff', icon: '/titans/northstar_s.png', banners: ['/titans/northstar_b.png'] },
   scorch:    { name: '烈焰',   color: '#ff9100', icon: '/titans/scorch_s.png',    banners: ['/titans/scorch_b.png'] },
-  tone:      { name: '强力',   color: '#c6ff00', icon: '/titans/tone_s.png',      banners: ['/titans/tone_b.png'] },
+  tone:      { name: '強力',   color: '#c6ff00', icon: '/titans/tone_s.png',      banners: ['/titans/tone_b.png'] },
   monarch:   { name: '帝王',   color: '#d500f9', icon: '/titans/monarch_s.png',   banners: ['/titans/monarch_b.png'] },
-  ion:       { name: '离子',   color: '#ff1744', icon: '/titans/ion_s.png',       banners: ['/titans/ion_b.png'] },
-  pilot:     { name: '铁驭',   color: '#aaaaaa', icon: null, banners: [] },
+  ion:       { name: '離子',   color: '#ff1744', icon: '/titans/ion_s.png',       banners: ['/titans/ion_b.png'] },
+  pilot:     { name: '鐵馭',   color: '#aaaaaa', icon: null, banners: [] },
   unknown:   { name: '',       color: '#333333', icon: null, banners: [] }
 }
 

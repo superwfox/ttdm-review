@@ -27,9 +27,9 @@ function greetingByHour(h) {
   if (h >= 11 && h < 13) return '中午好'
   if (h >= 13 && h < 16) return '下午好'
   if (h >= 16 && h < 18) return '已经是傍晚'
-  if (h >= 18 && h < 19) return '现在是晚饭时间'
+  if (h >= 18 && h < 19) return '現在是晚飯時間'
   if (h >= 19 && h < 22) return '晚上好'
-  if (h >= 22 && h < 24) return '时间不早了'
+  if (h >= 22 && h < 24) return '時間不早了'
   if (h >= 0 && h < 3)   return '已经是深夜'
   return '凌晨了'
 }
@@ -68,7 +68,7 @@ function onKeydown(e) {
         spellcheck="false"
       />
       <span v-if="!modelValue && !loading" class="placeholder">输入名称</span>
-      <span v-else-if="loading" class="placeholder loading">查询中…</span>
+      <span v-else-if="loading" class="placeholder loading">查詢中…</span>
       <div class="underline" :style="{ width: textWidth + 'px' }"></div>
     </div>
     <div v-if="greeting" class="greeting">{{ greeting }}</div>
