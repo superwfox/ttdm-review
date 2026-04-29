@@ -195,6 +195,11 @@ export async function onRequestPost(context) {
       if (!attTimeline || !attTimeline.length) {
         return Response.json({ ok: true, match_id: -1, uploader, dropped: true, mode: 'att' })
       }
+      // ATT matches run up to ~15min @ 0.5s sampling → 1800 samples max
+      const attLastIndex = attTimeline[attTimeline.length - 1]?.sample_num || 0
+      if (attLastIndex < 1440 || attLastIndex > 1800) {
+        return Response.json({ ok: true, match_id: -1, uploader, dropped: true, mode: 'att' })
+      }
       let metaParsed = null
       try { metaParsed = meta_json ? JSON.parse(meta_json) : null } catch {}
       return Response.json({
