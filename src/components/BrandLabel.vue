@@ -5,7 +5,7 @@
   <div class="brand-bar">
     <div class="brand-mask"></div>
     <div class="brand-text">
-      <div class="brand-title">TTDM-Review</div>
+      <div class="brand-title">Titanfall2-Review</div>
       <div class="brand-sub">MADE BY SUDARK</div>
     </div>
   </div>

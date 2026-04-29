@@ -17,6 +17,7 @@ import BrandLabel from './components/BrandLabel.vue'
 import DotMatrix from './components/DotMatrix.vue'
 import SearchLine from './components/SearchLine.vue'
 import MatchCard from './components/MatchCard.vue'
+import ATTMatchCard from './components/ATTMatchCard.vue'
 import SummaryCard from './components/SummaryCard.vue'
 import NicknameModal from './components/NicknameModal.vue'
 
@@ -330,6 +331,83 @@ function getChartData(timeline, perLife = false) {
   }
 }
 
+// ── ATT-specific helpers ──
+function isATT(match) {
+  return match?.mode === 'att'
+}
+
+function formatTTFT(seconds) {
+  if (seconds == null || seconds < 0) return null
+  const m = Math.floor(seconds / 60)
+  const s = Math.floor(seconds % 60)
+  return `${m}m${s.toString().padStart(2, '0')}s`
+}
+
+function computeATTMetrics(match, name) {
+  if (!match || !isATT(match)) return {}
+  const tl = match.timeline || []
+  const me = match.players?.find(p => p.name.toLowerCase() === (name || '').toLowerCase())
+
+  // Rank
+  const rank = match.score_rank || null
+
+  // PvP ratio = kills * 5 / score
+  let pvpRatio = null
+  if (me && me.score > 0) pvpRatio = (me.kills * 5) / me.score
+
+  // TTFT — first sample with titan_type != pilot, sample_num × 0.5s
+  let ttft = null
+  for (const t of tl) {
+    if (t.titan_type && t.titan_type !== 'pilot' && t.titan_type !== 'unknown') {
+      ttft = formatTTFT((t.sample_num || 0) * 0.5)
+      break
+    }
+  }
+
+  // Titan uptime % = titan samples / total
+  let uptime = null
+  if (tl.length) {
+    const titanCount = tl.filter(t => t.titan_type && t.titan_type !== 'pilot' && t.titan_type !== 'unknown').length
+    uptime = (titanCount / tl.length) * 100
+  }
+
+  // Doom→survive: each contiguous doomed run that ends with a non-doomed alive sample = survive
+  let doomSurvive = null
+  if (tl.length) {
+    let inDoom = false
+    let doomEvents = 0
+    let survives = 0
+    for (let i = 0; i < tl.length; i++) {
+      const t = tl[i]
+      if (t.is_doomed && !inDoom) {
+        inDoom = true
+        doomEvents++
+      } else if (inDoom && !t.is_doomed && (t.health || 0) > 0 && t.titan_type !== 'pilot') {
+        survives++
+        inDoom = false
+      } else if (inDoom && t.titan_type === 'pilot') {
+        // doom ended in death
+        inDoom = false
+      }
+    }
+    doomSurvive = doomEvents > 0 ? (survives / doomEvents) * 100 : null
+  }
+
+  // Score velocity: bucket dScore per minute, take peak (score/min)
+  let scoreVelocity = null
+  if (tl.length) {
+    const buckets = {}
+    for (const t of tl) {
+      const minute = Math.floor(((t.sample_num || 0) * 0.5) / 60)
+      buckets[minute] = (buckets[minute] || 0) + (t.delta_score || 0)
+    }
+    const vals = Object.values(buckets)
+    if (vals.length) scoreVelocity = Math.max(...vals)
+  }
+
+  return { rank, pvpRatio, ttft, titanUptime: uptime, doomSurvive, scoreVelocity }
+}
+
 // Scroller focus — compute scale/opacity per slot based on distance to viewport center
 let rafPending = false
 function updateFocus() {
@@ -393,7 +471,16 @@ watch(matches, () => nextTick(updateFocus), { deep: false })
             :key="match.id"
             class="slot"
           >
+            <ATTMatchCard
+              v-if="isATT(match)"
+              :match="match"
+              :playerStat="getPlayerStat(match, searchName.trim())"
+              :metrics="computeATTMetrics(match, searchName.trim())"
+              :primaryTitan="getPrimaryTitan(match.timeline)"
+              :titans="TITANS"
+            />
             <MatchCard
+              v-else
               :match="match"
               :playerStat="getPlayerStat(match, searchName.trim())"
               :usedTitans="getUsedTitans(match.timeline)"

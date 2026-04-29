@@ -1,8 +1,36 @@
 function parseUploaderName(filename) {
   const base = filename.replace(/\.(csv|bin|dat|txt)$/i, '')
-  // Match both HH-MM and HH-MM-SS timestamp formats
-  const match = base.match(/^(.+)_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}(?:-\d{2})?_(players|timeline)$/i)
+  // Match both HH-MM and HH-MM-SS timestamp formats; optional _att infix; players/timeline/meta slot
+  const match = base.match(/^(.+)_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}(?:-\d{2})?(?:_att)?_(players|timeline|meta)$/i)
   return match ? match[1] : null
+}
+
+function isATTFilename(filename) {
+  return /_att_(players|timeline|meta)\.(csv|bin|dat|txt)$/i.test(filename || '')
+}
+
+// 14-byte ATT sample: sampleNum(2) health(2) titanIdx(1) doomed(1)
+// dKills(1) dDeaths(1) dScore(2) teamScore(2) enemyScore(2) — all little-endian
+function parseATTBinaryTimeline(base64Str) {
+  const raw = atob(base64Str)
+  const len = raw.length
+  if (len % 14 !== 0) return null
+  const samples = []
+  for (let i = 0; i < len; i += 14) {
+    const b = idx => raw.charCodeAt(i + idx)
+    samples.push({
+      sample_num: b(0) | (b(1) << 8),
+      health: b(2) | (b(3) << 8),
+      titan_type: b(4),
+      is_doomed: b(5) === 1 ? 1 : 0,
+      delta_kills: b(6),
+      delta_deaths: b(7),
+      delta_score: b(8) | (b(9) << 8),
+      team_score: b(10) | (b(11) << 8),
+      enemy_score: b(12) | (b(13) << 8)
+    })
+  }
+  return samples
 }
 
 function parseCSV(text) {
@@ -143,7 +171,10 @@ export async function onRequestPost(context) {
 
     // ── Decode payload ──
     const decoded = JSON.parse(xorDecode(payload))
-    const { players_filename, timeline_filename, players_csv, timeline_bin } = decoded
+    const {
+      players_filename, timeline_filename, meta_filename,
+      players_csv, timeline_bin, meta_json
+    } = decoded
 
     if (!players_csv || !timeline_bin) {
       return Response.json({ ok: false, error: 'Need both players_csv and timeline_bin' }, { status: 400 })
@@ -155,6 +186,26 @@ export async function onRequestPost(context) {
 
     if (!uploader) {
       return Response.json({ ok: false, error: 'Cannot parse uploader name from filename' }, { status: 400 })
+    }
+
+    // ── ATT branch: parse + ack, no persistence yet (schema TBD) ──
+    const isATT = isATTFilename(players_filename) || isATTFilename(timeline_filename) || isATTFilename(meta_filename)
+    if (isATT) {
+      const attTimeline = parseATTBinaryTimeline(timeline_bin)
+      if (!attTimeline || !attTimeline.length) {
+        return Response.json({ ok: true, match_id: -1, uploader, dropped: true, mode: 'att' })
+      }
+      let metaParsed = null
+      try { metaParsed = meta_json ? JSON.parse(meta_json) : null } catch {}
+      return Response.json({
+        ok: true,
+        match_id: -1,
+        uploader,
+        mode: 'att',
+        parked: true,
+        samples: attTimeline.length,
+        meta: metaParsed
+      })
     }
 
     const playersData = parseCSV(players_csv)
