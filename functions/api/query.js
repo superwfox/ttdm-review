@@ -26,6 +26,28 @@ function parseBinaryTimeline(base64Str) {
   return samples
 }
 
+function parseATTBinaryTimeline(base64Str) {
+  const raw = atob(base64Str)
+  const len = raw.length
+  if (len % 14 !== 0) return []
+  const samples = []
+  for (let i = 0; i < len; i += 14) {
+    const b = idx => raw.charCodeAt(i + idx)
+    samples.push({
+      sample_num: b(0) | (b(1) << 8),
+      health: b(2) | (b(3) << 8),
+      titan_type: TITAN_TYPES[b(4)] || 'unknown',
+      is_doomed: b(5) === 1,
+      delta_kills: b(6),
+      delta_deaths: b(7),
+      delta_score: b(8) | (b(9) << 8),
+      team_score: b(10) | (b(11) << 8),
+      enemy_score: b(12) | (b(13) << 8)
+    })
+  }
+  return samples
+}
+
 export async function onRequestGet(context) {
   const { env } = context
   const db = env.DB
@@ -38,7 +60,6 @@ export async function onRequestGet(context) {
   }
 
   try {
-    // Check if name matches a nickname, redirect to player_name
     let actualName = name
     let redirectedFrom = null
     const nickRow = await db.prepare(
@@ -48,10 +69,9 @@ export async function onRequestGet(context) {
       actualName = nickRow.player_name
       redirectedFrom = name
     }
-    // Find paginated matches where this player appears, ordered by upload time DESC
-    // Fetch one extra to determine has_more
+
     const matchRows = await db.prepare(
-      `SELECT DISTINCT p.match_id, m.uploaded_at
+      `SELECT DISTINCT p.match_id, m.uploaded_at, m.mode
        FROM players p
        JOIN matches m ON m.id = p.match_id
        WHERE p.name COLLATE NOCASE = ? COLLATE NOCASE
@@ -69,28 +89,48 @@ export async function onRequestGet(context) {
     const matches = []
     for (const row of pageRows) {
       const matchId = row.match_id
+      const isATT = row.mode === 'att'
 
-      // Get all players in this match
       const players = await db.prepare(
-        'SELECT name, kills, deaths, damage FROM players WHERE match_id = ?'
+        'SELECT name, kills, deaths, damage, team, score FROM players WHERE match_id = ?'
       ).bind(matchId).all()
 
-      // Get timeline for the queried player (if they uploaded one)
       const timelineRow = await db.prepare(
-        'SELECT sample_detail FROM timelines WHERE match_id = ? AND uploader_name COLLATE NOCASE = ? COLLATE NOCASE LIMIT 1'
+        'SELECT sample_detail, score_rank FROM timelines WHERE match_id = ? AND uploader_name COLLATE NOCASE = ? COLLATE NOCASE LIMIT 1'
       ).bind(matchId, actualName).first()
 
       let timeline = []
       if (timelineRow && timelineRow.sample_detail) {
-        timeline = parseBinaryTimeline(timelineRow.sample_detail)
+        timeline = isATT
+          ? parseATTBinaryTimeline(timelineRow.sample_detail)
+          : parseBinaryTimeline(timelineRow.sample_detail)
       }
 
-      matches.push({
+      const matchObj = {
         id: matchId,
         uploaded_at: row.uploaded_at,
+        mode: row.mode || 'tdm',
         players: players.results,
         timeline
-      })
+      }
+
+      if (isATT) {
+        const meta = await db.prepare(
+          'SELECT map, match_duration, final_score_a, final_score_b, result, local_player_name FROM att_meta WHERE match_id = ?'
+        ).bind(matchId).first()
+        if (meta) {
+          matchObj.map = meta.map
+          matchObj.match_duration = meta.match_duration
+          matchObj.final_score = [meta.final_score_a, meta.final_score_b]
+          matchObj.result = meta.result
+          matchObj.local_player_name = meta.local_player_name
+        }
+        if (timelineRow && timelineRow.score_rank != null) {
+          matchObj.score_rank = timelineRow.score_rank
+        }
+      }
+
+      matches.push(matchObj)
     }
 
     const result = { ok: true, matches, has_more }

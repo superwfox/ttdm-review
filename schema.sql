@@ -1,7 +1,8 @@
 CREATE TABLE IF NOT EXISTS matches (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   players_hash TEXT NOT NULL UNIQUE,
-  uploaded_at TEXT NOT NULL DEFAULT (datetime('now'))
+  uploaded_at TEXT NOT NULL DEFAULT (datetime('now')),
+  mode TEXT
 );
 
 CREATE TABLE IF NOT EXISTS players (
@@ -10,14 +11,27 @@ CREATE TABLE IF NOT EXISTS players (
   name TEXT NOT NULL,
   kills INTEGER NOT NULL,
   deaths INTEGER NOT NULL,
-  damage INTEGER NOT NULL
+  damage INTEGER NOT NULL,
+  team TEXT,
+  score INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS timelines (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   match_id INTEGER NOT NULL REFERENCES matches(id),
   uploader_name TEXT NOT NULL,
-  sample_detail TEXT NOT NULL DEFAULT ''
+  sample_detail TEXT NOT NULL DEFAULT '',
+  score_rank INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS att_meta (
+  match_id INTEGER PRIMARY KEY REFERENCES matches(id),
+  map TEXT,
+  match_duration INTEGER,
+  final_score_a INTEGER,
+  final_score_b INTEGER,
+  result TEXT,
+  local_player_name TEXT
 );
 
 CREATE TABLE IF NOT EXISTS nicknames (

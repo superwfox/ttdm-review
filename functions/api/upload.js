@@ -188,7 +188,7 @@ export async function onRequestPost(context) {
       return Response.json({ ok: false, error: 'Cannot parse uploader name from filename' }, { status: 400 })
     }
 
-    // ── ATT branch: parse + ack, no persistence yet (schema TBD) ──
+    // ── ATT branch: persist with mode='att' ──
     const isATT = isATTFilename(players_filename) || isATTFilename(timeline_filename) || isATTFilename(meta_filename)
     if (isATT) {
       const attTimeline = parseATTBinaryTimeline(timeline_bin)
@@ -200,17 +200,79 @@ export async function onRequestPost(context) {
       if (attLastIndex < 1440 || attLastIndex > 1800) {
         return Response.json({ ok: true, match_id: -1, uploader, dropped: true, mode: 'att' })
       }
+
+      const attPlayers = parseCSV(players_csv)
+      if (!attPlayers.length) {
+        return Response.json({ ok: false, error: 'ATT players data malformed' }, { status: 400 })
+      }
+
       let metaParsed = null
       try { metaParsed = meta_json ? JSON.parse(meta_json) : null } catch {}
-      return Response.json({
-        ok: true,
-        match_id: -1,
-        uploader,
-        mode: 'att',
-        parked: true,
-        samples: attTimeline.length,
-        meta: metaParsed
-      })
+
+      const attHash = await hashPlayers(players_csv)
+      let attMatch = await db.prepare('SELECT id FROM matches WHERE players_hash = ?').bind(attHash).first()
+
+      if (!attMatch) {
+        const insertAttMatch = await db.prepare(
+          "INSERT INTO matches (players_hash, mode) VALUES (?, 'att')"
+        ).bind(attHash).run()
+        const attMatchId = insertAttMatch.meta.last_row_id
+
+        const attPlayerStmt = db.prepare(
+          'INSERT INTO players (match_id, name, kills, deaths, damage, team, score) VALUES (?, ?, ?, ?, ?, ?, ?)'
+        )
+        const attPlayerBatch = attPlayers.map(p =>
+          attPlayerStmt.bind(
+            attMatchId,
+            p.name,
+            parseInt(p.kills) || 0,
+            parseInt(p.deaths) || 0,
+            0,
+            p.team || null,
+            parseInt(p.score) || 0
+          )
+        )
+        await db.batch(attPlayerBatch)
+
+        if (metaParsed) {
+          const fs = Array.isArray(metaParsed.final_score) ? metaParsed.final_score : [null, null]
+          await db.prepare(
+            'INSERT INTO att_meta (match_id, map, match_duration, final_score_a, final_score_b, result, local_player_name) VALUES (?, ?, ?, ?, ?, ?, ?)'
+          ).bind(
+            attMatchId,
+            metaParsed.map || null,
+            parseInt(metaParsed.match_duration) || null,
+            fs[0] != null ? parseInt(fs[0]) : null,
+            fs[1] != null ? parseInt(fs[1]) : null,
+            metaParsed.result || null,
+            metaParsed.local_player_name || null
+          ).run()
+        }
+
+        attMatch = { id: attMatchId }
+      }
+
+      const attExisting = await db.prepare(
+        'SELECT 1 FROM timelines WHERE match_id = ? AND uploader_name = ? LIMIT 1'
+      ).bind(attMatch.id, uploader).first()
+
+      if (!attExisting) {
+        const scoreRank = metaParsed && metaParsed.score_rank != null ? parseInt(metaParsed.score_rank) : null
+        await db.prepare(
+          'INSERT INTO timelines (match_id, uploader_name, sample_detail, score_rank) VALUES (?, ?, ?, ?)'
+        ).bind(attMatch.id, uploader, timeline_bin, scoreRank).run()
+      }
+
+      const attExistingNick = await db.prepare(
+        'SELECT id FROM nicknames WHERE ip = ? LIMIT 1'
+      ).bind(ip).first()
+      if (!attExistingNick) {
+        await db.prepare(
+          'INSERT INTO nicknames (player_name, ip) VALUES (?, ?)'
+        ).bind(uploader, ip).run()
+      }
+
+      return Response.json({ ok: true, match_id: attMatch.id, uploader, mode: 'att' })
     }
 
     const playersData = parseCSV(players_csv)
