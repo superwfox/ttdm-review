@@ -483,10 +483,13 @@ const m = computed(() => props.metrics || {})
   mix-blend-mode: screen; pointer-events: none; border-radius: 12px;
 }
 .card-banner-darken {
-  position: absolute; top: 0; left: 0; right: 0; height: 230px;
-  background:
-    linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.30) 55%, transparent 100%),
-    linear-gradient(to right, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.15) 70%, rgba(0,0,0,0.05) 100%);
+  position: absolute; top: 0; left: 0; right: 0; height: 320px;
+  background: linear-gradient(180deg,
+    rgba(0,0,0,0.60) 0%,
+    rgba(0,0,0,0.45) 35%,
+    rgba(0,0,0,0.25) 65%,
+    rgba(0,0,0,0.05) 90%,
+    transparent 100%);
   pointer-events: none; border-radius: 12px;
 }
 .card-content { position: relative; z-index: 1; padding: 24px; }
