@@ -114,20 +114,18 @@ export async function onRequestGet(context) {
         timeline
       }
 
-      if (isATT) {
-        const meta = await db.prepare(
-          'SELECT map, match_duration, final_score_a, final_score_b, result, local_player_name FROM att_meta WHERE match_id = ?'
-        ).bind(matchId).first()
-        if (meta) {
-          matchObj.map = meta.map
-          matchObj.match_duration = meta.match_duration
-          matchObj.final_score = [meta.final_score_a, meta.final_score_b]
-          matchObj.result = meta.result
-          matchObj.local_player_name = meta.local_player_name
-        }
-        if (timelineRow && timelineRow.score_rank != null) {
-          matchObj.score_rank = timelineRow.score_rank
-        }
+      const meta = await db.prepare(
+        'SELECT map, match_duration, final_score_a, final_score_b, result, local_player_name FROM att_meta WHERE match_id = ?'
+      ).bind(matchId).first()
+      if (meta) {
+        matchObj.map = meta.map
+        matchObj.match_duration = meta.match_duration
+        matchObj.final_score = [meta.final_score_a, meta.final_score_b]
+        matchObj.result = meta.result
+        matchObj.local_player_name = meta.local_player_name
+      }
+      if (isATT && timelineRow && timelineRow.score_rank != null) {
+        matchObj.score_rank = timelineRow.score_rank
       }
 
       matches.push(matchObj)

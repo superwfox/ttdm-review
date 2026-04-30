@@ -76,7 +76,6 @@ const finalScoreText = computed(() => {
   return `${fs[0]} : ${fs[1]}`
 })
 
-// ── Player list with friend/foe band ──
 const sortedPlayers = computed(() => {
   if (!props.match.players) return []
   return [...props.match.players].sort((a, b) => (b.score || 0) - (a.score || 0))
@@ -93,7 +92,22 @@ function bandColor(team) {
   return team === localTeam.value ? 'rgba(120, 180, 255, 0.45)' : 'rgba(255, 120, 120, 0.45)'
 }
 
-// ── Chart data ──
+// Cumulative arrays — stable across toggle changes; used for tooltip lookup
+const cumulatives = computed(() => {
+  const tl = props.match.timeline
+  if (!tl || !tl.length) return null
+  const cumScore = new Array(tl.length)
+  const cumDeaths = new Array(tl.length)
+  let s = 0, d = 0
+  for (let i = 0; i < tl.length; i++) {
+    s += tl[i].delta_score || 0
+    d += tl[i].delta_deaths || 0
+    cumScore[i] = s
+    cumDeaths[i] = d
+  }
+  return { cumScore, cumDeaths }
+})
+
 const chartData = computed(() => {
   const tl = props.match.timeline
   if (!tl || !tl.length) return null
@@ -107,10 +121,10 @@ const chartData = computed(() => {
 
   // HP segmented by titan type (color per segment)
   const segments = []
-  let cur = { type: tl[0].titan_type, points: [{ x: 0, y: adjustHp(tl[0]), titanType: tl[0].titan_type, sampleNum: tl[0].sample_num, deltaKills: tl[0].delta_kills || 0 }] }
+  let cur = { type: tl[0].titan_type, points: [{ x: 0, y: adjustHp(tl[0]), titanType: tl[0].titan_type, sampleNum: tl[0].sample_num, deltaKills: tl[0].delta_kills || 0, deltaDeaths: tl[0].delta_deaths || 0 }] }
   for (let i = 1; i < tl.length; i++) {
     const t = tl[i]
-    const pt = { x: i, y: adjustHp(t), titanType: t.titan_type, sampleNum: t.sample_num, deltaKills: t.delta_kills || 0 }
+    const pt = { x: i, y: adjustHp(t), titanType: t.titan_type, sampleNum: t.sample_num, deltaKills: t.delta_kills || 0, deltaDeaths: t.delta_deaths || 0 }
     if (t.titan_type !== cur.type) {
       cur.points.push(pt)
       segments.push(cur)
@@ -155,7 +169,7 @@ const chartData = computed(() => {
     showLine: false
   })
 
-  // Toggle series (cumulative dDeaths/dScore, raw teamScore/enemyScore)
+  // Toggle line series (dScore cumulative, teamScore/enemyScore raw) — deaths handled by plugin
   const extras = []
   let y2Max = 0
 
@@ -166,7 +180,7 @@ const chartData = computed(() => {
       return { x: i, y: acc }
     })
     y2Max = Math.max(y2Max, acc)
-    return { data: pts, borderColor: color, borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0.1, yAxisID: 'y2', parsing: { xAxisKey: 'x', yAxisKey: 'y' }, spanGaps: true, _label: '' }
+    return { data: pts, borderColor: color, borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0.1, yAxisID: 'y2', parsing: { xAxisKey: 'x', yAxisKey: 'y' }, spanGaps: true }
   }
   function makeRawLine(key, color) {
     let max = 0
@@ -176,13 +190,12 @@ const chartData = computed(() => {
       return { x: i, y: v }
     })
     y2Max = Math.max(y2Max, max)
-    return { data: pts, borderColor: color, borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0.1, yAxisID: 'y2', parsing: { xAxisKey: 'x', yAxisKey: 'y' }, spanGaps: true, _label: '' }
+    return { data: pts, borderColor: color, borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0.1, yAxisID: 'y2', parsing: { xAxisKey: 'x', yAxisKey: 'y' }, spanGaps: true }
   }
 
-  if (toggles.value.dDeaths) extras.push({ ...makeCumLine('delta_deaths', '#ff7043'), _label: '累计死亡' })
-  if (toggles.value.dScore) extras.push({ ...makeCumLine('delta_score', '#ffd54f'), _label: '累计得分' })
-  if (toggles.value.teamScore) extras.push({ ...makeRawLine('team_score', '#64b5f6'), _label: '友方分' })
-  if (toggles.value.enemyScore) extras.push({ ...makeRawLine('enemy_score', '#ef5350'), _label: '敌方分' })
+  if (toggles.value.dScore) extras.push(makeCumLine('delta_score', '#ffd54f'))
+  if (toggles.value.teamScore) extras.push(makeRawLine('team_score', '#64b5f6'))
+  if (toggles.value.enemyScore) extras.push(makeRawLine('enemy_score', '#ef5350'))
 
   return {
     datasets: [...hpDatasets, ...extras],
@@ -220,8 +233,38 @@ const crosshairPlugin = {
   }
 }
 
+// Red glass vertical bars at each delta_deaths > 0 sample
+const deathBarsPlugin = {
+  id: 'deathBars',
+  beforeDatasetsDraw(chart) {
+    if (!toggles.value.dDeaths) return
+    const tl = props.match.timeline
+    if (!tl || !tl.length) return
+    const xScale = chart.scales.x
+    const area = chart.chartArea
+    const ctx = chart.ctx
+    ctx.save()
+    for (let i = 0; i < tl.length; i++) {
+      if ((tl[i].delta_deaths || 0) <= 0) continue
+      const x = xScale.getPixelForValue(i)
+      const w = 5
+      const grad = ctx.createLinearGradient(0, area.top, 0, area.bottom)
+      grad.addColorStop(0, 'rgba(255, 70, 70, 0.55)')
+      grad.addColorStop(0.5, 'rgba(255, 70, 70, 0.28)')
+      grad.addColorStop(1, 'rgba(255, 70, 70, 0.04)')
+      ctx.fillStyle = grad
+      ctx.fillRect(x - w / 2, area.top, w, area.bottom - area.top)
+      // bright top edge for the "glass" feel
+      ctx.fillStyle = 'rgba(255, 120, 120, 0.85)'
+      ctx.fillRect(x - w / 2, area.top, w, 1.5)
+    }
+    ctx.restore()
+  }
+}
+
 const chartOptions = computed(() => {
   const data = chartData.value
+  const cum = cumulatives.value
   return {
     responsive: true,
     maintainAspectRatio: false,
@@ -244,8 +287,11 @@ const chartOptions = computed(() => {
           const dp = tm.dataPoints?.[0]
           if (!dp) return
           const raw = dp.raw
-          const sampleNum = raw.sampleNum || (raw.x + 1)
-          const titanType = raw.titanType || 'unknown'
+          const idx = Math.round(raw.x)
+          const tl = props.match.timeline
+          const t = tl?.[idx]
+          const sampleNum = raw.sampleNum || (idx + 1)
+          const titanType = raw.titanType || t?.titan_type || 'unknown'
           const titanCfg = props.titans[titanType]
           const iconHtml = titanCfg?.icon
             ? `<img src="${titanCfg.icon}" style="width:32px;height:32px;object-fit:cover;display:block;margin:0 auto 4px;">`
@@ -253,7 +299,23 @@ const chartOptions = computed(() => {
           const hp = raw.y
           const hpText = `<div style="font-size:14px;font-weight:bold;color:rgb(${fgRgb});text-align:center;">${formatStat(hp)}</div>`
           const killHtml = raw.deltaKills > 0 ? `<div style="font-size:12px;color:#FF9ECF;text-align:center;">☆${raw.deltaKills}</div>` : ''
-          tip.innerHTML = `<div style="font-size:11px;color:rgba(${fgRgb},0.53);text-align:center;margin-bottom:4px;">${sampleNum} / ${totalSamples.value}</div>${iconHtml}${hpText}${killHtml}`
+
+          // Toggle-conditional extra rows
+          let extraHtml = ''
+          if (toggles.value.dDeaths && t && (t.delta_deaths || 0) > 0) {
+            extraHtml += `<div style="font-size:12px;color:#ff7a7a;text-align:center;margin-top:2px;">死亡 ×${t.delta_deaths}</div>`
+          }
+          if (toggles.value.dScore && cum) {
+            extraHtml += `<div style="font-size:12px;color:#ffd54f;text-align:center;margin-top:2px;">累计得分 ${formatStat(cum.cumScore[idx] || 0)}</div>`
+          }
+          if (toggles.value.teamScore && t) {
+            extraHtml += `<div style="font-size:12px;color:#64b5f6;text-align:center;margin-top:2px;">友方 ${formatStat(t.team_score || 0)}</div>`
+          }
+          if (toggles.value.enemyScore && t) {
+            extraHtml += `<div style="font-size:12px;color:#ef5350;text-align:center;margin-top:2px;">敌方 ${formatStat(t.enemy_score || 0)}</div>`
+          }
+
+          tip.innerHTML = `<div style="font-size:11px;color:rgba(${fgRgb},0.53);text-align:center;margin-bottom:4px;">${sampleNum} / ${totalSamples.value}</div>${iconHtml}${hpText}${killHtml}${extraHtml}`
           tip.style.opacity = '1'
           const w = tip.offsetWidth || 80
           const maxLeft = context.chart.width - w
@@ -285,7 +347,7 @@ const chartOptions = computed(() => {
   }
 })
 
-const chartPlugins = [crosshairPlugin]
+const chartPlugins = [crosshairPlugin, deathBarsPlugin]
 
 const chartKey = computed(() => {
   const t = toggles.value
@@ -306,6 +368,7 @@ const m = computed(() => props.metrics || {})
       class="card-banner"
       :style="{ backgroundImage: `url(${bannerUrl})` }"
     ></div>
+    <div class="card-banner-darken"></div>
 
     <div class="card-content">
       <div class="card-header">
@@ -415,9 +478,16 @@ const m = computed(() => props.metrics || {})
 .card-banner {
   position: absolute; top: 0; left: 0; right: 0; height: 320px;
   background-size: auto 100%; background-position: right top; background-repeat: no-repeat;
-  mask-image: linear-gradient(to left, rgba(0,0,0,0.35) 0%, transparent 100%);
-  -webkit-mask-image: linear-gradient(to left, rgba(0,0,0,0.35) 0%, transparent 100%);
+  mask-image: linear-gradient(to left, rgba(0,0,0,0.22) 0%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to left, rgba(0,0,0,0.22) 0%, transparent 100%);
   mix-blend-mode: screen; pointer-events: none; border-radius: 12px;
+}
+.card-banner-darken {
+  position: absolute; top: 0; left: 0; right: 0; height: 230px;
+  background:
+    linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.30) 55%, transparent 100%),
+    linear-gradient(to right, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.15) 70%, rgba(0,0,0,0.05) 100%);
+  pointer-events: none; border-radius: 12px;
 }
 .card-content { position: relative; z-index: 1; padding: 24px; }
 
@@ -425,12 +495,11 @@ const m = computed(() => props.metrics || {})
   display: flex; align-items: baseline; gap: 16px; margin-bottom: 20px;
   flex-wrap: wrap;
 }
-.match-time { color: rgba(var(--fg-rgb), 0.33); font-size: 13px; }
-.match-map { color: rgba(var(--fg-rgb), 0.7); font-size: 13px; letter-spacing: 1px; }
+.match-time { color: rgba(var(--fg-rgb), 0.55); font-size: 13px; }
+.match-map { color: rgba(var(--fg-rgb), 0.85); font-size: 13px; letter-spacing: 1px; }
 .match-result { font-size: 14px; font-weight: 700; }
-.match-score { font-size: 13px; color: rgba(var(--fg-rgb), 0.55); font-variant-numeric: tabular-nums; }
+.match-score { font-size: 13px; color: rgba(var(--fg-rgb), 0.75); font-variant-numeric: tabular-nums; }
 
-/* Metric grid: 3 cols × 2 rows */
 .metric-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -442,11 +511,13 @@ const m = computed(() => props.metrics || {})
   font-size: 28px; line-height: 1.1;
   font-variant-numeric: tabular-nums;
   color: rgb(var(--fg-rgb));
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.55);
 }
-.metric-unit { font-size: 13px; color: rgba(var(--fg-rgb), 0.4); margin-left: 2px; }
+.metric-unit { font-size: 13px; color: rgba(var(--fg-rgb), 0.55); margin-left: 2px; }
 .metric-label {
-  font-size: 11px; color: rgba(var(--fg-rgb), 0.45);
+  font-size: 11px; color: rgba(var(--fg-rgb), 0.65);
   letter-spacing: 1px; margin-top: 4px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
 }
 
 .chart-wrap { height: 180px; margin-top: 8px; position: relative; }
@@ -467,7 +538,7 @@ const m = computed(() => props.metrics || {})
   height: 26px; padding: 0 10px; border-radius: 6px;
   border: 1px solid rgba(var(--fg-rgb), 0.15);
   background: rgb(var(--bg-rgb)); color: rgba(var(--fg-rgb), 0.5);
-  font-size: 11px; font-family: inherit; letter-spacing: 0.5px;
+  font-size: 11px; font-family: 'ZhuoKai', sans-serif; letter-spacing: 0.5px;
   cursor: pointer; transition: background 0.2s, color 0.2s, border-color 0.2s;
 }
 .series-toggle:hover { border-color: rgba(var(--fg-rgb), 0.4); }

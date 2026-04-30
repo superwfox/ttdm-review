@@ -302,17 +302,44 @@ export async function onRequestPost(context) {
 
     const hash = await hashPlayers(players_csv)
 
+    let metaParsedTdm = null
+    try { metaParsedTdm = meta_json ? JSON.parse(meta_json) : null } catch {}
+
     let match = await db.prepare('SELECT id FROM matches WHERE players_hash = ?').bind(hash).first()
 
     if (!match) {
       const insertMatch = await db.prepare('INSERT INTO matches (players_hash) VALUES (?)').bind(hash).run()
       const matchId = insertMatch.meta.last_row_id
 
-      const playerStmt = db.prepare('INSERT INTO players (match_id, name, kills, deaths, damage) VALUES (?, ?, ?, ?, ?)')
+      const playerStmt = db.prepare(
+        'INSERT INTO players (match_id, name, kills, deaths, damage, team) VALUES (?, ?, ?, ?, ?, ?)'
+      )
       const playerBatch = playersData.map(p =>
-        playerStmt.bind(matchId, p.name, parseInt(p.kills), parseInt(p.deaths), parseInt(p.damage))
+        playerStmt.bind(
+          matchId,
+          p.name,
+          parseInt(p.kills) || 0,
+          parseInt(p.deaths) || 0,
+          parseInt(p.damage) || 0,
+          p.team || null
+        )
       )
       await db.batch(playerBatch)
+
+      if (metaParsedTdm) {
+        const fs = Array.isArray(metaParsedTdm.final_score) ? metaParsedTdm.final_score : [null, null]
+        await db.prepare(
+          'INSERT INTO att_meta (match_id, map, match_duration, final_score_a, final_score_b, result, local_player_name) VALUES (?, ?, ?, ?, ?, ?, ?)'
+        ).bind(
+          matchId,
+          metaParsedTdm.map || null,
+          parseInt(metaParsedTdm.match_duration) || null,
+          fs[0] != null ? parseInt(fs[0]) : null,
+          fs[1] != null ? parseInt(fs[1]) : null,
+          metaParsedTdm.result || null,
+          metaParsedTdm.local_player_name || null
+        ).run()
+      }
 
       match = { id: matchId }
     }

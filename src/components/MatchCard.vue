@@ -33,6 +33,37 @@ function formatTime(utcStr) {
   return beijing.toISOString().slice(0, 16).replace('T', ' ')
 }
 
+const mapName = computed(() => {
+  const raw = props.match.map || ''
+  return raw.replace(/^mp_/, '').replace(/_/g, ' ').toUpperCase()
+})
+
+const resultLabel = computed(() => {
+  const r = props.match.result
+  if (r === 'win') return { text: '胜利', color: '#9eff9e' }
+  if (r === 'loss') return { text: '失败', color: '#ff5252' }
+  if (r === 'draw') return { text: '平局', color: '#ffeb3b' }
+  return { text: '', color: 'inherit' }
+})
+
+const finalScoreText = computed(() => {
+  const fs = props.match.final_score
+  if (!Array.isArray(fs) || fs.length < 2 || fs[0] == null || fs[1] == null) return ''
+  return `${fs[0]} : ${fs[1]}`
+})
+
+const localTeam = computed(() => {
+  const me = props.match.local_player_name
+  if (!me) return null
+  const row = props.match.players?.find(p => p.name === me)
+  return row?.team || null
+})
+
+function bandColor(team) {
+  if (!localTeam.value || !team) return 'transparent'
+  return team === localTeam.value ? 'rgba(120, 180, 255, 0.45)' : 'rgba(255, 120, 120, 0.45)'
+}
+
 // Pick a random banner on mount (stable per card instance)
 const bannerUrl = (() => {
   if (!props.primaryTitan) return null
@@ -230,6 +261,9 @@ const chartKey = computed(() =>
     <div class="card-content">
       <div class="card-header">
         <span class="match-time">{{ formatTime(match.uploaded_at) }}</span>
+        <span v-if="mapName" class="match-map">{{ mapName }}</span>
+        <span v-if="resultLabel.text" class="match-result" :style="{ color: resultLabel.color }">{{ resultLabel.text }}</span>
+        <span v-if="finalScoreText" class="match-score">{{ finalScoreText }}</span>
       </div>
 
       <template v-if="playerStat">
@@ -321,7 +355,12 @@ const chartKey = computed(() =>
             <span class="player-deaths">DEATHS</span>
             <span class="player-damage">DAMAGE</span>
           </div>
-          <div v-for="p in sortedPlayers" :key="p.name" class="player-row">
+          <div
+            v-for="p in sortedPlayers"
+            :key="p.name"
+            class="player-row"
+            :style="{ '--band-color': bandColor(p.team) }"
+          >
             <span class="player-name" :title="p.name">{{ p.name }}</span>
             <span class="player-avg">{{ formatStat(p.avg) }}</span>
             <span class="player-kills">{{ formatStat(p.kills) }}</span>
@@ -395,12 +434,33 @@ const chartKey = computed(() =>
 }
 
 .card-header {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
   margin-bottom: 16px;
+  flex-wrap: wrap;
 }
 
 .match-time {
-  color: rgba(var(--fg-rgb), 0.33);
+  color: rgba(var(--fg-rgb), 0.55);
   font-size: 13px;
+}
+
+.match-map {
+  color: rgba(var(--fg-rgb), 0.85);
+  font-size: 13px;
+  letter-spacing: 1px;
+}
+
+.match-result {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.match-score {
+  font-size: 13px;
+  color: rgba(var(--fg-rgb), 0.75);
+  font-variant-numeric: tabular-nums;
 }
 
 /* Stats */
@@ -609,7 +669,13 @@ const chartKey = computed(() =>
   align-items: center;
   font-size: 13px;
   font-variant-numeric: tabular-nums;
-  padding: 6px 0;
+  padding: 6px 8px;
+  border-radius: 4px;
+  background: linear-gradient(to right, var(--band-color, transparent) 0%, transparent 70%);
+}
+
+.player-head {
+  background: none;
 }
 
 .player-name {
